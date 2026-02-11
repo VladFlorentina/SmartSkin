@@ -1,39 +1,39 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../config/supabase.js';
 
-// Inițializare Gemini Client (folosind cheia din .env)
+// Initializare Gemini Client (folosind cheia din .env)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 /**
  * POST /api/chat
- * Trimite un mesaj către AI (cu contextul produsului)
+ * Trimite un mesaj catre AI (cu contextul produsului)
  * Body: { message, productId, contextData }
  */
 export async function sendMessage(req, res) {
     try {
         const { message, productId, contextData } = req.body;
-        const userId = req.user?.id; // Va fi null dacă nu e autentificat (momentan ok)
+        const userId = req.user?.id; // Va fi null daca nu e autentificat (momentan ok)
 
-        // Verifică dacă avem API Key
+        // Verifica daca avem API Key
         if (!process.env.GEMINI_API_KEY) {
             return res.status(503).json({
                 error: 'AI Service Unavailable',
-                message: 'Serverul nu are configurată cheia Gemini API.'
+                message: 'Serverul nu are configurata cheia Gemini API.'
             });
         }
 
-        // Construiește prompt-ul de sistem
-        // Include datele despre produs dacă există
+        // Construieste prompt-ul de sistem
+        // Include datele despre produs daca exista
         let systemPrompt = `
-Ești CosmetiBot, un asistent AI expert în dermatologie și chimie cosmetică pentru aplicația SmartSkin.
-Rolul tău este să ajuți utilizatorii să înțeleagă ingredientele din produsele cosmetice.
+Esti CosmetiBot, un asistent AI expert in dermatologie si chimie cosmetica pentru aplicatia SmartSkin.
+Rolul tau este sa ajuti utilizatorii sa inteleaga ingredientele din produsele cosmetice.
 
 Reguli:
-1. Răspunde în limba ROMÂNĂ.
-2. Fii concis, empatic și educativ.
-3. Dacă un produs are ingrediente toxice, explică DE CE sunt rele, dar nu panica utilizatorul.
-4. Dacă nu ești sigur, spune că ești un AI și recomanzi consultarea unui medic.
-5. Folosește emoji-uri pentru a face textul prietenos.
+1. Raspunde in limba ROMANA (fara diacritice, daca e posibil).
+2. Fii concis, empatic si educativ.
+3. Daca un produs are ingrediente toxice, explica DE CE sunt rele, dar nu panica utilizatorul.
+4. Daca nu esti sigur, spune ca esti un AI si recomanzi consultarea unui medic.
+5. NU folosi emoji-uri.
 `;
 
         if (contextData) {
@@ -43,18 +43,18 @@ CONTEXT PRODUS CURENT:
 - Nume Produs: ${contextData.productName || 'Necunoscut'}
 - Brand: ${contextData.brand || 'Necunoscut'}
 - Ingrediente: ${contextData.ingredientsList || 'Nespecificat'}
-- Scor Siguranță Calculat: ${contextData.safetyScore || 'N/A'}/100
+- Scor Siguranta Calculat: ${contextData.safetyScore || 'N/A'}/100
 - Ingrediente cu Risc: ${JSON.stringify(contextData.riskyIngredients || [])}
 
-Utilizatorul întreabă despre acest produs. Răspunde specific la contextul de mai sus.
+Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai sus.
 `;
         }
 
-        // Inițializează modelul
+        // Initializeaza modelul
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         // Trimite mesajul + istoric (simplificat pentru demo)
-        // În producție am încărca și istoricul conversației anterioare
+        // In productie am incarca si istoricul conversatiei anterioare
         const chat = model.startChat({
             history: [
                 {
@@ -63,7 +63,7 @@ Utilizatorul întreabă despre acest produs. Răspunde specific la contextul de 
                 },
                 {
                     role: "model",
-                    parts: [{ text: "Am înțeles. Sunt gata să analizez produsul și să răspund la întrebări despre ingrediente." }],
+                    parts: [{ text: "Am inteles. Sunt gata sa analizez produsul si sa raspund la intrebari despre ingrediente." }],
                 },
             ],
         });
@@ -71,7 +71,7 @@ Utilizatorul întreabă despre acest produs. Răspunde specific la contextul de 
         const result = await chat.sendMessage(message);
         const responseText = result.response.text();
 
-        // Salvează conversația în baza de date (dacă avem User ID)
+        // Salveaza conversatia in baza de date (daca avem User ID)
         if (userId) {
             await supabase.from('ai_conversations').insert({
                 user_id: userId,
@@ -90,7 +90,7 @@ Utilizatorul întreabă despre acest produs. Răspunde specific la contextul de 
         console.error('Error in AI Chat:', error);
         return res.status(500).json({
             error: 'AI Error',
-            message: 'Nu am putut procesa mesajul. Te rog încearcă mai târziu.'
+            message: 'Nu am putut procesa mesajul. Te rog incearca mai tarziu.'
         });
     }
 }

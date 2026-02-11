@@ -4,7 +4,7 @@ import { analyzeToxicity } from '../services/toxicityAnalyzer.js';
 
 /**
  * GET /api/products/:barcode
- * Returnează informații despre produs + analiza de toxicitate
+ * Returneaza informatii despre produs + analiza de toxicitate
  */
 export async function getProductByBarcode(req, res) {
     try {
@@ -16,7 +16,7 @@ export async function getProductByBarcode(req, res) {
             });
         }
 
-        // 1. Verifică cache în Supabase
+        // 1. Verifica cache in Supabase
         const { data: cachedProduct, error: cacheError } = await supabase
             .from('products')
             .select('*')
@@ -24,9 +24,9 @@ export async function getProductByBarcode(req, res) {
             .single();
 
         if (cachedProduct && !cacheError) {
-            console.log(`✅ Product found in cache: ${barcode}`);
+            console.log(`[CACHE] Product found in cache: ${barcode}`);
 
-            // Analizează toxicitatea (se poate face cache și pentru asta)
+            // Analizeaza toxicitatea (se poate face cache si pentru asta)
             const analysis = await analyzeToxicity(cachedProduct.ingredients_list);
 
             return res.json({
@@ -37,7 +37,7 @@ export async function getProductByBarcode(req, res) {
         }
 
         // 2. Fetch de la Open Beauty Facts
-        console.log(`🔍 Fetching product from OBF: ${barcode}`);
+        console.log(`[FETCH] Fetching product from OBF: ${barcode}`);
         const productData = await fetchProductByBarcode(barcode);
 
         if (!productData) {
@@ -46,10 +46,10 @@ export async function getProductByBarcode(req, res) {
             });
         }
 
-        // 3. Analizează toxicitatea
+        // 3. Analizeaza toxicitatea
         const analysis = await analyzeToxicity(productData.ingredientsText);
 
-        // 4. Salvează în cache (Supabase)
+        // 4. Salveaza in cache (Supabase)
         const { data: savedProduct, error: saveError } = await supabase
             .from('products')
             .insert({
@@ -68,7 +68,7 @@ export async function getProductByBarcode(req, res) {
             console.error('Error saving to cache:', saveError);
         }
 
-        // 5. Returnează rezultatul complet
+        // 5. Returneaza rezultatul complet
         return res.json({
             ...productData,
             analysis,
@@ -86,7 +86,7 @@ export async function getProductByBarcode(req, res) {
 
 /**
  * POST /api/history
- * Salvează un produs scanat în istoricul utilizatorului
+ * Salveaza un produs scanat in istoricul utilizatorului
  */
 export async function saveToHistory(req, res) {
     try {
@@ -97,7 +97,7 @@ export async function saveToHistory(req, res) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // Verifică dacă produsul există
+        // Verifica daca produsul exista
         let productDbId = productId;
 
         if (!productDbId && barcode) {
@@ -114,7 +114,7 @@ export async function saveToHistory(req, res) {
             return res.status(400).json({ error: 'Product not found' });
         }
 
-        // Salvează în istoric
+        // Salveaza in istoric
         const { data, error } = await supabase
             .from('scanned_products')
             .insert({
@@ -142,7 +142,7 @@ export async function saveToHistory(req, res) {
 
 /**
  * GET /api/history
- * Returnează istoricul scanărilor utilizatorului
+ * Returneaza istoricul scanarilor utilizatorului
  */
 export async function getUserHistory(req, res) {
     try {

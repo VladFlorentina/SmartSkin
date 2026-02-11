@@ -3,7 +3,7 @@ import axios from 'axios';
 const OBF_API_BASE = 'https://world.openbeautyfacts.org/api/v2';
 
 /**
- * Caută un produs după barcode în Open Beauty Facts / Open Food Facts
+ * Cauta un produs dupa barcode in Open Beauty Facts / Open Food Facts
  * @param {string} barcode - Codul de bare EAN-13/UPC
  * @returns {Promise<Object>} - Datele produsului sau null
  */
@@ -12,7 +12,7 @@ export async function fetchProductByBarcode(barcode) {
         const response = await axios.get(`${OBF_API_BASE}/product/${barcode}.json`);
 
         if (response.data.status === 0) {
-            console.log(`⚠️ Product not found: ${barcode}`);
+            console.log(`[WARN] Product not found: ${barcode}`);
             return null;
         }
 
@@ -23,13 +23,13 @@ export async function fetchProductByBarcode(barcode) {
             barcode: product.code,
             name: product.product_name || 'Unknown Product',
             brand: product.brands || 'Unknown Brand',
-            // Ingredientele sunt în câmpul 'ingredients_text'
+            // Ingredientele sunt in campul 'ingredients_text'
             ingredientsText: product.ingredients_text || '',
-            // Array de ingrediente parsate (dacă există)
+            // Array de ingrediente parsate (daca exista)
             ingredientsArray: product.ingredients || [],
             imageUrl: product.image_url || product.image_front_url || null,
             categories: product.categories || '',
-            // Open Beauty Facts are și un field pentru cosmetice
+            // Open Beauty Facts are si un field pentru cosmetice
             categoriesTags: product.categories_tags || []
         };
     } catch (error) {
@@ -39,7 +39,7 @@ export async function fetchProductByBarcode(barcode) {
 }
 
 /**
- * Verifică dacă produsul este cosmetic (nu alimentar)
+ * Verifica daca produsul este cosmetic (nu alimentar)
  * @param {Object} product - Obiectul produs de la OBF
  * @returns {boolean}
  */

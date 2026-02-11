@@ -1,28 +1,30 @@
 import { supabase } from '../config/supabase.js';
 
 /**
- * Convertește score-ul din baza de date UE în risk level
- * Score UE: -10 (interzis), -5 (restricționat), 0 (admis)
+ * Converteste score-ul din baza de date UE in risk level
+ * Score UE: -10 (interzis), -5 (restrictionat), 0 (admis)
  * Risk level: 0-5 (0=safe, 5=toxic)
  */
 function scoreToRiskLevel(score) {
     if (score === -10) return 5; // Interzis = risc maxim
-    if (score === -5) return 3;  // Restricționat = risc moderat-ridicat
+    if (score === -5) return 3;  // Restrictionat = risc moderat-ridicat
     if (score === 0) return 0;   // Admis = sigur
     return 2; // Default pentru scoruri necunoscute
 }
 
 /**
- * Determină categoria de risc bazat pe descriere
+ * Determina categoria de risc bazat pe descriere
  */
 function getCategoryFromDescription(description) {
-    const desc = description?.toLowerCase() || '';
+    // Normalizare text pentru a elimina diacriticele din comparatie
+    const desc = (description?.toLowerCase() || '')
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     if (desc.includes('interzis')) return 'banned';
-    if (desc.includes('restricționat') || desc.includes('restrictionat')) return 'restricted';
+    if (desc.includes('restrictionat')) return 'restricted';
     if (desc.includes('colorant')) return 'safe';
 
-    // Încearcă să detecteze din anexe
+    // Incearca sa detecteze din anexe
     if (desc.includes('anexa ii')) return 'banned';
     if (desc.includes('anexa iii')) return 'restricted';
     if (desc.includes('anexa iv') || desc.includes('anexa v') || desc.includes('anexa vi')) return 'safe';
@@ -31,8 +33,8 @@ function getCategoryFromDescription(description) {
 }
 
 /**
- * Analizează lista de ingrediente și calculează scorul de siguranță
- * Folosește datele REALE din Supabase (2,500+ ingrediente UE)
+ * Analizeaza lista de ingrediente si calculeaza scorul de siguranta
+ * Foloseste datele REALE din Supabase (2,500+ ingrediente UE)
  * @param {string} ingredientsText - Lista de ingrediente (format text INCI)
  * @returns {Promise<Object>} - Rezultatul analizei
  */
@@ -42,11 +44,11 @@ export async function analyzeToxicity(ingredientsText) {
             safetyScore: 0,
             message: 'No ingredients found',
             ingredientsBreakdown: [],
-            warnings: ['Nu s-au găsit ingrediente pentru analiză']
+            warnings: ['Nu s-au gasit ingrediente pentru analiza']
         };
     }
 
-    // Parsare ingrediente (split după virgulă și curățare)
+    // Parsare ingrediente (split dupa virgula si curatare)
     const ingredientNames = ingredientsText
         .split(',')
         .map(ing => ing.trim())
@@ -57,7 +59,7 @@ export async function analyzeToxicity(ingredientsText) {
             safetyScore: 0,
             message: 'Invalid ingredients format',
             ingredientsBreakdown: [],
-            warnings: ['Format invalid pentru listă ingrediente']
+            warnings: ['Format invalid pentru lista ingrediente']
         };
     }
 
@@ -65,7 +67,7 @@ export async function analyzeToxicity(ingredientsText) {
     const ingredientsBreakdown = [];
 
     for (const name of ingredientNames) {
-        // Caută ingredient în Supabase (case-insensitive)
+        // Cauta ingredient in Supabase (case-insensitive)
         const { data, error } = await supabase
             .from('ingredients')
             .select('name, score, description')
@@ -74,19 +76,19 @@ export async function analyzeToxicity(ingredientsText) {
 
         if (error) {
             console.error(`Error querying ingredient "${name}":`, error);
-            // Dacă e eroare, considerăm ingredient necunoscut
+            // Daca e eroare, consideram ingredient necunoscut
             ingredientsBreakdown.push({
                 name: name,
                 score: 0,
                 riskLevel: 2,
                 riskCategory: 'unknown',
-                description: 'Eroare la căutare în baza de date'
+                description: 'Eroare la cautare in baza de date'
             });
             continue;
         }
 
         if (data && data.length > 0) {
-            // Ingredient găsit în baza de date
+            // Ingredient gasit in baza de date
             const ingredient = data[0];
             const riskLevel = scoreToRiskLevel(ingredient.score);
             const category = getCategoryFromDescription(ingredient.description);
@@ -99,18 +101,18 @@ export async function analyzeToxicity(ingredientsText) {
                 description: ingredient.description
             });
         } else {
-            // Ingredient necunoscut - nu e în baza de date UE
+            // Ingredient necunoscut - nu e in baza de date UE
             ingredientsBreakdown.push({
                 name: name,
                 score: 0,
                 riskLevel: 2, // Neutru/necunoscut
                 riskCategory: 'unknown',
-                description: 'Ingredient necunoscut în baza de date UE'
+                description: 'Ingredient necunoscut in baza de date UE'
             });
         }
     }
 
-    // Calculare scor siguranță
+    // Calculare scor siguranta
     const score = calculateSafetyScore(ingredientsBreakdown);
 
     // Generare warning-uri
@@ -146,12 +148,12 @@ function calculateSafetyScore(ingredients) {
         }
     });
 
-    // Dacă are ingrediente interzise, scorul e foarte scăzut
+    // Daca are ingrediente interzise, scorul e foarte scazut
     if (bannedCount > 0) {
         return Math.max(0, 20 - (bannedCount * 5));
     }
 
-    // Risk level scale: 0 (safe) → 5 (toxic)
+    // Risk level scale: 0 (safe) -> 5 (toxic)
     const avgRisk = totalRisk / ingredients.length;
 
     // Formula: 
@@ -166,7 +168,7 @@ function calculateSafetyScore(ingredients) {
 }
 
 /**
- * Generează warning-uri bazate pe categorii de risc
+ * Genereaza warning-uri bazate pe categorii de risc
  */
 function generateWarnings(ingredients) {
     const warnings = [];
@@ -176,30 +178,30 @@ function generateWarnings(ingredients) {
     const unknown = ingredients.filter(i => i.riskCategory === 'unknown');
 
     if (banned.length > 0) {
-        warnings.push(`🚨 ATENȚIE: ${banned.length} ingrediente INTERZISE în UE!`);
+        warnings.push(`ATENTIE: ${banned.length} ingrediente INTERZISE in UE!`);
     }
     if (restricted.length > 0) {
-        warnings.push(`⚠️ ${restricted.length} ingrediente restricționate în UE`);
+        warnings.push(`AVERTISMENT: ${restricted.length} ingrediente restrictionate in UE`);
     }
     if (unknown.length > 0) {
-        warnings.push(`ℹ️ ${unknown.length} ingrediente necunoscute în baza de date UE`);
+        warnings.push(`INFO: ${unknown.length} ingrediente necunoscute in baza de date UE`);
     }
 
     const highRisk = ingredients.filter(i => i.riskLevel >= 4);
     if (highRisk.length > 0) {
-        warnings.push(`🔴 ${highRisk.length} ingrediente cu risc ridicat`);
+        warnings.push(`RISC RIDICAT: ${highRisk.length} ingrediente cu risc ridicat`);
     }
 
     return warnings;
 }
 
 /**
- * Generează mesaj sumar bazat pe scor
+ * Genereaza mesaj sumar bazat pe scor
  */
 function getRiskSummary(score) {
     if (score >= 80) return 'Produs sigur - risc minim';
-    if (score >= 60) return 'Risc scăzut - acceptabil pentru majoritatea utilizatorilor';
-    if (score >= 40) return 'Risc moderat - utilizați cu precauție';
-    if (score >= 20) return 'Risc ridicat - nu se recomandă';
-    return 'Risc foarte ridicat - conține ingrediente interzise!';
+    if (score >= 60) return 'Risc scazut - acceptabil pentru majoritatea utilizatorilor';
+    if (score >= 40) return 'Risc moderat - utilizati cu precautie';
+    if (score >= 20) return 'Risc ridicat - nu se recomanda';
+    return 'Risc foarte ridicat - contine ingrediente interzise!';
 }

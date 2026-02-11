@@ -7,15 +7,15 @@ import { sendMessage } from '../controllers/aiController.js';
 const router = express.Router();
 
 // ========== Product Routes ==========
-// GET produs după barcode (public - nu necesită auth deocamdată)
+// GET produs dupa barcode (public - nu necesita auth deocamdata)
 router.get('/products/:barcode', getProductByBarcode);
 
 // ========== History Routes (require auth) ==========
-// Deocamdată comentate până implementăm autentificarea în Faza 2
+// Deocamdata comentate pana implementam autentificarea in Faza 2
 // router.post('/history', authMiddleware, saveToHistory);
 // router.get('/history', authMiddleware, getUserHistory);
 
-// Versiuni temporare fără auth pentru testare
+// Versiuni temporare fara auth pentru testare
 router.post('/history', saveToHistory);
 router.get('/history', getUserHistory);
 

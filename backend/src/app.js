@@ -45,13 +45,13 @@ app.use((err, req, res, next) => {
 
 // ========== Server Start ==========
 app.listen(PORT, async () => {
-    console.log(`\n🚀 CosmetiSafe Backend running on http://localhost:${PORT}`);
-    console.log(`📍 API endpoints: http://localhost:${PORT}/api\n`);
+    console.log(`\n[INFO] CosmetiSafe Backend running on http://localhost:${PORT}`);
+    console.log(`[INFO] API endpoints: http://localhost:${PORT}/api\n`);
 
     // Test Supabase connection
     await testConnection();
 
-    console.log('\n✨ Server ready to accept requests!\n');
+    console.log('\n[INFO] Server ready to accept requests!\n');
 });
 
 export default app;

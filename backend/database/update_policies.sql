@@ -16,7 +16,7 @@ CREATE POLICY "Enable insert for all users"
   ON products FOR INSERT
   WITH CHECK (true);
 
--- 3. Permite update (opțional, pentru a actualiza datele produselor)
+-- 3. Permite update (optional, pentru a actualiza datele produselor)
 CREATE POLICY "Enable update for all users"
   ON products FOR UPDATE
   USING (true);

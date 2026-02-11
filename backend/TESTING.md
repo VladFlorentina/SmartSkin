@@ -1,4 +1,4 @@
-# 🧪 Backend Testing Script
+# Backend Testing Script
 
 ## Test 1: Health Check
 **Endpoint:** `GET /api/health`
@@ -42,7 +42,7 @@ Invoke-RestMethod -Uri "http://localhost:3000/api/test-ingredient?name=aqua"
 **Expected:** 
 - Safety score calculat
 - Warning pentru Triclosan (INTERZIS)
-- Warning pentru Parabens (RESTRICȚIONAT)
+- Warning pentru Parabens (RESTRICTIONAT)
 
 ```powershell
 $body = @{

@@ -17,10 +17,10 @@ export async function testConnection() {
   try {
     const { data, error } = await supabase.from('ingredients').select('count');
     if (error) throw error;
-    console.log('✅ Supabase connection successful');
+    console.log('[INFO] Supabase connection successful');
     return true;
   } catch (error) {
-    console.error('❌ Supabase connection failed:', error.message);
+    console.error('[ERROR] Supabase connection failed:', error.message);
     return false;
   }
 }
