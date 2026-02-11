@@ -1,0 +1,7 @@
+date incrediente :https://ec.europa.eu/growth/tools-databases/cosing/
+logica ar fi asta   Utilizatorul scanează un cod de bare.
+Backend-ul caută în tabela ta products.
+Dacă NU găsește produsul, îl caută automat pe OpenBeautyFacts API (o bază de date globală open-source).
+Dacă îl găsește acolo, îl salvează la tine în baza de date (pentru viitor) și îl trimite utilizatorului , ce parere ai ?
+
+https://world.openbeautyfacts.org/

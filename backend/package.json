@@ -1,0 +1,27 @@
+{
+  "name": "cosmetisafe-backend",
+  "version": "1.0.0",
+  "description": "Backend API for CosmetiSafe - Smart Cosmetic Analyzer",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "keywords": [
+    "cosmetics",
+    "toxicity",
+    "analysis",
+    "ai"
+  ],
+  "author": "Vlad & Florentina",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.18.2"
+  }
+}
