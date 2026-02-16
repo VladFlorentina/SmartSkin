@@ -131,15 +131,26 @@ export async function analyzeToxicity(ingredientsText) {
 /**
  * Algoritm de calcul scor toxicitate (0-100, 100 = cel mai sigur)
  */
+/**
+ * Algoritm de calcul scor toxicitate (0-100, 100 = cel mai sigur)
+ * Include "Regula primelor 5" pentru a simula concentratia
+ */
 function calculateSafetyScore(ingredients) {
     if (ingredients.length === 0) return 0;
 
-    let totalRisk = 0;
+    let totalWeightedRisk = 0;
+    let totalWeights = 0;
     let maxRisk = 0;
     let bannedCount = 0;
 
-    ingredients.forEach(ing => {
-        totalRisk += ing.riskLevel;
+    ingredients.forEach((ing, index) => {
+        // Pondere bazata pe pozitie (simulare concentratie)
+        // Primele 5 ingrediente au greutate dubla (sunt baza produsului)
+        const weight = index < 5 ? 2.0 : 1.0;
+
+        totalWeightedRisk += ing.riskLevel * weight;
+        totalWeights += weight;
+
         if (ing.riskLevel > maxRisk) {
             maxRisk = ing.riskLevel;
         }
@@ -154,15 +165,15 @@ function calculateSafetyScore(ingredients) {
     }
 
     // Risk level scale: 0 (safe) -> 5 (toxic)
-    const avgRisk = totalRisk / ingredients.length;
+    const avgWeightedRisk = totalWeightedRisk / totalWeights;
 
     // Formula: 
-    // - 60% bazat pe media riscului
-    // - 40% penalizare pentru ingredientul cel mai toxic
-    const avgComponent = (1 - avgRisk / 5) * 60;
-    const maxPenalty = (maxRisk / 5) * 40;
+    // - 70% bazat pe media PONDERATA a riscului (concentratie)
+    // - 30% penalizare pentru ingredientul cel mai toxic (prezenta)
+    const avgComponent = (1 - avgWeightedRisk / 5) * 70;
+    const maxPenalty = (maxRisk / 5) * 30;
 
-    const score = avgComponent + (100 - maxPenalty) * 0.4;
+    const score = avgComponent + (100 - maxPenalty) * 0.3;
 
     return Math.max(0, Math.min(100, score));
 }

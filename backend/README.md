@@ -15,7 +15,7 @@ Gestioneaza analiza ingredientelor cosmetice, scanarea produselor si istoricul u
 ### 2. Logica de Business (Backend)
 - **Analiza Toxicitatii (Algoritm Smart):** (`src/services/toxicityAnalyzer.js`)
   - Identifica fiecare ingredient in baza de date UE.
-  - Calculeaza un scor de siguranta (0-100) bazat pe media riscurilor.
+  - Calculeaza un scor de siguranta (0-100) bazat op pe media ponderata a riscurilor (primele 5 ingrediente conteaza dublu).
   - **Penalizeaza drastic** prezenta ingredientelor interzise sau cu risc ridicat.
   - Genereaza avertismente specifice (ex: "Contine Parabeni", "Risc de disruptori endocrini").
   

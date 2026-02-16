@@ -24,7 +24,9 @@ Pasii pentru a rula backend-ul local.
 1. In Supabase Dashboard > SQL Editor
 2. Click "New Query"
 3. Copiaza continutul din `backend/database/schema.sql`
-4. Click "Run" pentru a crea tabelele
+4. Click "Run" pentru a crea tabelele initiale
+5. **PAS NOU:** Sterge editorul, copiaza continutul din `backend/database/user_profiles.sql` si da click "Run".
+   (Asta va crea tabela pentru profiluri si va actualiza ingredientele).
 
 **c) Verifica crearea tabelelor:**
 - Mergi la Table Editor
