@@ -1,6 +1,6 @@
 import express from 'express';
 import { supabase } from '../config/supabase.js';
-import { getProductByBarcode, saveToHistory, getUserHistory } from '../controllers/productController.js';
+import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct } from '../controllers/productController.js';
 import { sendMessage } from '../controllers/aiController.js';
 // import { authMiddleware } from '../middleware/auth.js'; // TODO: Faza 2
 
@@ -9,6 +9,9 @@ const router = express.Router();
 // ========== Product Routes ==========
 // GET produs dupa barcode (public - nu necesita auth deocamdata)
 router.get('/products/:barcode', getProductByBarcode);
+
+// POST adaugare produs manual + OCR
+router.post('/products/manual', addManualProduct);
 
 // ========== History Routes (require auth) ==========
 // Deocamdata comentate pana implementam autentificarea in Faza 2

@@ -19,9 +19,12 @@ export default function RegisterScreen({ onLoginPress }) {
 
         setLoading(true);
 
+        const cleanEmail = email.trim();
+        const cleanFullName = fullName.trim();
+
         // Trimitem full_name in metadata pentru a fi preluat de trigger-ul din backend
         const { error } = await supabase.auth.signUp({
-            email,
+            email: cleanEmail,
             password,
             options: {
                 data: {
@@ -62,6 +65,7 @@ export default function RegisterScreen({ onLoginPress }) {
                     placeholder="example@email.com"
                     value={email}
                     onChangeText={setEmail}
+                    keyboardType="email-address"
                 />
 
                 <Input

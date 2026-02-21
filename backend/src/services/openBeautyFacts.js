@@ -12,11 +12,18 @@ export async function fetchProductByBarcode(barcode) {
         const response = await axios.get(`${OBF_API_BASE}/product/${barcode}.json`);
 
         if (response.data.status === 0) {
-            console.log(`[WARN] Product not found: ${barcode}`);
-            return null;
+            console.log(`[WARN] Product not found (status 0): ${barcode}`);
+            throw { response: { status: 404 } }; // Triggers fallback
         }
 
         const product = response.data.product;
+
+        // Daca produsul exista in baza de date OBF, dar nu are lista de ingrediente completata (foarte des intalnit),
+        // il consideram NEGASIT pentru a forta utilizatorul sa foloseasca functia OCR (poza la eticheta).
+        if (!product.ingredients_text || product.ingredients_text.trim() === '') {
+            console.log(`[WARN] Product found but has ZERO ingredients: ${barcode}. Forcing 404 for OCR fallback.`);
+            throw { response: { status: 404 } };
+        }
 
         // Extrage datele relevante
         return {
@@ -33,6 +40,11 @@ export async function fetchProductByBarcode(barcode) {
             categoriesTags: product.categories_tags || []
         };
     } catch (error) {
+        if (error.response && error.response.status === 404) {
+            console.log(`[WARN] Product not found: ${barcode}`);
+            throw new Error('Not Found');
+        }
+
         console.error('Error fetching from Open Beauty Facts:', error.message);
         throw new Error('Failed to fetch product data');
     }

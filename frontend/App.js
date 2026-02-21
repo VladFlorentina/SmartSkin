@@ -5,7 +5,9 @@ import { supabase } from './src/lib/supabase';
 import { NativeWindStyleSheet } from "nativewind";
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import Button from './src/components/Button';
+import ScannerScreen from './src/screens/ScannerScreen';
+import ProductScreen from './src/screens/ProductScreen';
+import ManualAddScreen from './src/screens/ManualAddScreen';
 import Layout from './src/components/Layout';
 
 NativeWindStyleSheet.setOutput({
@@ -16,6 +18,8 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
+  const [showManualAdd, setShowManualAdd] = useState(false);
+  const [scannedBarcode, setScannedBarcode] = useState(null);
 
   useEffect(() => {
     // 1. Verifica sesiunea curenta
@@ -41,26 +45,36 @@ export default function App() {
     );
   }
 
-  // Daca avem sesiune -> Arata Home (Placeholder)
+  // Daca avem sesiune -> Arata ecranele principale
   if (session && session.user) {
-    return (
-      <Layout className="justify-center items-center">
-        <View className="bg-white p-8 rounded-3xl shadow-sm w-full items-center">
-          <Text className="text-3xl font-bold text-brand-900 mb-4">
-            Hello, gorgeous! 🌸
-          </Text>
-          <Text className="text-brand-500 mb-8 text-center font-medium">
-            You are signed in as:{'\n'}
-            <Text className="text-brand-700">{session.user.email}</Text>
-          </Text>
+    if (showManualAdd) {
+      return (
+        <ManualAddScreen
+          originalBarcode={scannedBarcode}
+          onBack={() => setShowManualAdd(false)}
+          onProductAdded={(barcode) => {
+            setShowManualAdd(false);
+            setScannedBarcode(barcode); // Afiseaza produsul nou adaugat imediat
+          }}
+        />
+      );
+    }
 
-          <Button
-            title="Sign Out"
-            onPress={() => supabase.auth.signOut()}
-            variant="outline"
-          />
-        </View>
-      </Layout>
+    if (scannedBarcode) {
+      return (
+        <ProductScreen
+          barcode={scannedBarcode}
+          onBack={() => setScannedBarcode(null)}
+          onAddManual={() => setShowManualAdd(true)}
+        />
+      );
+    }
+
+    return (
+      <ScannerScreen
+        onSignOut={() => supabase.auth.signOut()}
+        onScanned={(barcode) => setScannedBarcode(barcode)}
+      />
     );
   }
 

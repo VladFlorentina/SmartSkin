@@ -6,7 +6,8 @@ export default function Input({
     onChangeText,
     placeholder,
     secureTextEntry = false,
-    error
+    error,
+    keyboardType = "default"
 }) {
     return (
         <View className="mb-5">
@@ -23,6 +24,7 @@ export default function Input({
                 placeholderTextColor="#FDA4AF"
                 secureTextEntry={secureTextEntry}
                 autoCapitalize="none"
+                keyboardType={keyboardType}
             />
             {error && (
                 <Text className="text-red-500 text-sm mt-1 ml-1">

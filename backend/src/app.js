@@ -11,7 +11,8 @@ const PORT = process.env.PORT || 3000;
 
 // ========== Middleware ==========
 app.use(cors()); // Permite requests de la React Native
-app.use(express.json()); // Parse JSON bodies
+app.use(express.json({ limit: '50mb' })); // Marit la 50mb pentru pozele OCR (base64)
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Logging middleware
 app.use((req, res, next) => {

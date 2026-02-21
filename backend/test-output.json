@@ -1,0 +1,107 @@
+{
+  "safetyScore": 63,
+  "totalIngredients": 14,
+  "ingredientsBreakdown": [
+    {
+      "name": "AQUA",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "SODIUM LAURETH SULFATE",
+      "score": -3,
+      "riskLevel": 3,
+      "riskCategory": "moderate",
+      "description": "Surfactant puternic. Poate irita pielea si scalpul. (Sulfate)"
+    },
+    {
+      "name": "COCAMIDOPROPYL BETAINE",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "GLYCERIN",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "PEG-7 GLYCERYL COCOATE",
+      "score": -3,
+      "riskLevel": 3,
+      "riskCategory": "moderate",
+      "description": "Compus etoxilat. Proces de fabricatie poluant. Permeabilizeaza pielea."
+    },
+    {
+      "name": "SODIUM CHLORIDE",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "SODIUM BENZOATE",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "CITRIC ACID",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "PARFUM",
+      "score": -3,
+      "riskLevel": 3,
+      "riskCategory": "moderate",
+      "description": "Amestec nedeclarat de chimicale. Potential alergen ridicat."
+    },
+    {
+      "name": "SALICYLIC ACID",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "GUAR HYDROXYPROPYLTRIMONIUM CHLORIDE",
+      "score": -2,
+      "riskLevel": 2,
+      "riskCategory": "moderate",
+      "description": "Compus cuaternar de amoniu. Usor iritant."
+    },
+    {
+      "name": "PANTHENOL",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "LINALOOL",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    },
+    {
+      "name": "LIMONENE",
+      "score": 0,
+      "riskLevel": 0,
+      "riskCategory": "safe",
+      "description": "Ingredient sigur, acceptat pe scara larga."
+    }
+  ],
+  "warnings": [],
+  "riskSummary": "Risc scazut - acceptabil pentru majoritatea utilizatorilor",
+  "_source": "supabase"
+}

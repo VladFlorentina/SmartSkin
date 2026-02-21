@@ -13,16 +13,20 @@ Gestioneaza analiza ingredientelor cosmetice, scanarea produselor si istoricul u
 - **Utilizatori & Istoric:** Tabele pregatite pentru salvarea scanarilor, bookmark-uri si chat.
 
 ### 2. Logica de Business (Backend)
-- **Analiza Toxicitatii (Algoritm Smart):** (`src/services/toxicityAnalyzer.js`)
-  - Identifica fiecare ingredient in baza de date UE.
-  - Calculeaza un scor de siguranta (0-100) bazat op pe media ponderata a riscurilor (primele 5 ingrediente conteaza dublu).
-  - **Penalizeaza drastic** prezenta ingredientelor interzise sau cu risc ridicat.
-  - Genereaza avertismente specifice (ex: "Contine Parabeni", "Risc de disruptori endocrini").
+- **Analiza Toxicitatii (Algoritm INCI):** (`src/services/toxicityAnalyzer.js`)
+  - Identifica fiecare ingredient in baza de date UE, folosind si un fallback de "Partial Match" pentru nume incomplete.
+  - Calculeaza un scor de siguranta (0-100) bazat pe modelul *INCI Beauty* (Cap Penalty System).
+  - Ingredientul cu riscul cel mai mare plafoneaza nota produsului la o valoare maxima (ex: Risc 4 = Scor Maxim 45), indiferent de ingredientele sigure.
+  - Include penalizare pentru 'Cocktail Effect' (combinatii de multiple chimicale).
+  
+- **Scanare OCR (Adaugare Manuala cu AI):**
+  - Pentru produsele care nu au ingrediente pe internet, aplicatia permite upload-ul unei poze cu eticheta.
+  - Backend-ul trimite poza la Inteligent Artificiala Google Gemini (Vision 2.5 Flash) pentru a extrage textul.
+  - Salveaza noul produs inteligent in DB folosind operatiunea `upsert` pentru a suprascrie inregistrari invalide fara sa dea erori de conflict (Eroare Postgres 23505).
   
 - **Integrare OpenBeautyFacts:** 
-  - Cand scanezi un produs, backend-ul il cauta intai local.
-  - Daca nu exista, il descarca automat de pe internet (Open Beauty Facts API).
-  - Il salveaza in baza ta de date pentru scanari viitoare (Auto-Learning).
+  - Cand scanezi un produs, backend-ul il cauta intai in cache-ul local.
+  - Daca nu exista (sau nu are ingrediente declarate), il respinge (404 Not Found) pentru a forta utilizatorul sa scaneze manual eticheta cu OCR.
 
 - **AI Chatbot (Multilingv):** (`src/controllers/aiController.js`)
   - Integrat cu Google Gemini (model `gemini-2.5-flash`).

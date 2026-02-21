@@ -43,8 +43,14 @@ Spre deosebire de alte aplicatii, CosmetiSafe nu doar listeaza ingredientele, ci
 5.  (Optional) **AI-ul** genereaza un rezumat explicativ pentru utilizator.
 
 ## Status Proiect
-**In Dezvoltare.**
-Configurarea mediului de lucru si arhitectura backend sunt finalizate. Urmeaza implementarea modulelor de scanare.
+**In Dezvoltare (Faza de Testare & Debugging AI).**
+
+*Ce am finalizat recent:*
+- **Modulul OCR (Adaugare Manuala):** Utilizatorii au acum capacitatea de a poza eticheta de ingrediente cu camera, iar modelul generativ Google Gemini (`gemini-2.5-flash`) descompune textul chimic intr-un format analizabil. Solutia repara deficientele bazei de date globale "Open Beauty Facts" unde mii de produse sunt inregistrate fara liste de ingrediente.
+- **Scoring Algoritmic (Stil INCI Beauty):** Am facut tranzitia de la un scor liniar (medie matematica permisiva) la un sistem guvernat de **penalizare prin plafon maxim (Cap Effect)**. Un singur ingredient interzis plafoneaza intregul produs la scor sub 45/100, indiferent de cantitatea de elemente sigure "filler" (apa, glicerina).
+- **Tratarea Problemelor OBF (Ghost Products):** Sistemul a fost securizat arhitectural prin tehnici `upsert` si rutare asertiva 404 (vezi arhiva problemelor).
+
+> **Atentie:** Un jurnal tehnic aprofundat al tuturor erorilor de backend, networking, frontend status si limitari API (inclusiv detalii despre bug-ul curent al Scorului Generat 0) poate fi consultat in noul document **[PROBLEME.md](./PROBLEME.md)**.
 
 ---
 *Developed by Vlad & Florentina*

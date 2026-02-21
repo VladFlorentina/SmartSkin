@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase.js';
 import { fetchProductByBarcode } from '../services/openBeautyFacts.js';
 import { analyzeToxicity } from '../services/toxicityAnalyzer.js';
+import { extractIngredientsFromImage } from '../services/geminiService.js';
 
 /**
  * GET /api/products/:barcode
@@ -24,16 +25,21 @@ export async function getProductByBarcode(req, res) {
             .single();
 
         if (cachedProduct && !cacheError) {
-            console.log(`[CACHE] Product found in cache: ${barcode}`);
+            // Daca produsul este pushe in cache dar nu are ingrediente (fantoma) il ignoram
+            if (!cachedProduct.ingredients_list || cachedProduct.ingredients_list.trim() === '') {
+                console.log(`[WARN] Product found in cache but has ZERO ingredients: ${barcode}. Ignoring cache...`);
+            } else {
+                console.log(`[CACHE] Product found in cache: ${barcode}`);
 
-            // Analizeaza toxicitatea (se poate face cache si pentru asta)
-            const analysis = await analyzeToxicity(cachedProduct.ingredients_list);
+                // Analizeaza toxicitatea
+                const analysis = await analyzeToxicity(cachedProduct.ingredients_list);
 
-            return res.json({
-                ...cachedProduct,
-                analysis,
-                source: 'cache'
-            });
+                return res.json({
+                    ...cachedProduct,
+                    analysis,
+                    source: 'cache'
+                });
+            }
         }
 
         // 2. Fetch de la Open Beauty Facts
@@ -176,5 +182,69 @@ export async function getUserHistory(req, res) {
     } catch (error) {
         console.error('Error in getUserHistory:', error);
         return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+/**
+ * POST /api/products/manual
+ * Adauga un produs manual folosind OCR (Gemini Vision) pentru eticheta de ingrediente
+ */
+export async function addManualProduct(req, res) {
+    try {
+        const { barcode, name, brand, base64Image, mimeType = 'image/jpeg' } = req.body;
+
+        if (!name || !base64Image) {
+            return res.status(400).json({ error: 'Numele produsului si imaginea cu eticheta sunt obligatorii' });
+        }
+
+        console.log(`[MANUAL ADD] Procesare imagine pentru produsul: ${name}`);
+
+        // 1. Extrage ingredientele din poza folosind Gemini (OCR)
+        const ingredientsText = await extractIngredientsFromImage(base64Image, mimeType);
+
+        console.log(`[OCR SUCCESS] Ingrediente extrase: ${ingredientsText.substring(0, 100)}...`);
+
+        // 2. Analizeaza toxicitatea (Regulile UE)
+        const analysis = await analyzeToxicity(ingredientsText);
+
+        // 3. Salveaza produsul public in Supabase pentru toti utilizatorii
+        const productDataToSave = {
+            barcode: barcode || `MANUAL-${Date.now()}`, // Genereaza un cod fals daca lipseste
+            name: name,
+            brand: brand || 'Necunoscut',
+            ingredients_list: ingredientsText,
+            image_url: null, // Deocamdata nu salvam in bucket poza intreaga
+            category: 'manual_entry',
+            last_updated: new Date().toISOString()
+        };
+
+        const { data: savedProduct, error: saveError } = await supabase
+            .from('products')
+            .upsert(productDataToSave, { onConflict: 'barcode' })
+            .select()
+            .single();
+
+        if (saveError) {
+            console.error('[DB ERROR] Nu am putut salva produsul manual:', saveError);
+            return res.status(500).json({ error: 'Eroare la salvarea in baza de date' });
+        }
+
+        // 4. Returneaza rezultatul
+        return res.json({
+            barcode: savedProduct.barcode,
+            name: savedProduct.name,
+            brand: savedProduct.brand,
+            ingredientsText: savedProduct.ingredients_list,
+            imageUrl: null,
+            analysis,
+            source: 'manual_ocr',
+            message: 'Produs analizat si salvat cu succes in cloud!'
+        });
+
+    } catch (error) {
+        console.error('Error in addManualProduct:', error);
+        return res.status(500).json({
+            error: error.message || 'Eroare la procesarea produsului manual'
+        });
     }
 }

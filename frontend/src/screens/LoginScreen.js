@@ -12,8 +12,11 @@ export default function LoginScreen({ onRegisterPress }) {
 
     async function handleLogin() {
         setLoading(true);
+
+        const cleanEmail = email.trim();
+
         const { error } = await supabase.auth.signInWithPassword({
-            email,
+            email: cleanEmail,
             password,
         });
 
@@ -40,6 +43,7 @@ export default function LoginScreen({ onRegisterPress }) {
                     placeholder="example@email.com"
                     value={email}
                     onChangeText={setEmail}
+                    keyboardType="email-address"
                 />
 
                 <Input

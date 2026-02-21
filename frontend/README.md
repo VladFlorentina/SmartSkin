@@ -47,16 +47,19 @@ Acest document descrie logica, structura si planul de implementare pentru aplica
 - [x] Configurare Client Supabase
 - [x] Structura directoare (`src/screens`, `src/components`)
 
-### Faza 2: Autentificare (URMEAZA ACUM)
-- [ ] **Ecran Login:** Input email, parola, buton "Intra".
-- [ ] **Ecran Register:** Input nume, email, parola, confirmare.
-- [ ] **Integrare:** Legare la `supabase.auth.signInWithPassword`.
-- [ ] **Navigare:** Daca e logat -> Home; Daca nu -> Login.
+### Faza 2: Autentificare & UI Makeover (FINALIZAT)
+- [x] **Componente Reutilizabile:** Create Button, Input, Layout.
+- [x] **Ecrane:** Implementat LoginScreen si RegisterScreen cu Supabase Auth.
+- [x] **Design (Pink Theme):** Aplicata o paleta de culori "girly" (roz pal, alb, visiniu) via NativeWind pentru un aspect curat si intuitiv de "Beauty App".
+- [x] **Limba:** Interfata a fost tradusa complet in Engleza (ex: "Welcome Back!", "Sign In") pentru un profil mai profesional.
+- [x] **Integrare:** Logica de sesiune (pastrarea userului logat) gestionata in App.js.
 
-### Faza 3: Scanare & Produs
-- [ ] **Ecran Home:** Buton mare de scanare.
-- [ ] **Camera:** Integrare `expo-camera` sau `expo-barcode-scanner`.
-- [ ] **Ecran Produs:** Fetch date de la backend si afisare scor/ingrediente.
+### Faza 3: Scanare, Produs & OCR AI (FINALIZAT)
+- [x] **Ecran Home:** Acces rapid catre scannerul de produse si istoricul testat.
+- [x] **Scanner Camera:** Integrarea functiei de citire coduri de bare EAN/UPC folosind senzorii nativi.
+- [x] **Ecran Produs:** Fetch inteligent de date (Cache -> OBF API) si afisarea vizuala a scorului (sistem plafonat tip INCI Beauty).
+- [x] **Scoring Dinamic:** Listarea ingredientelor descompuse cromatic (Verde = Sigur, Galben = Risc, Rosu/Negru = Interzis).
+- [x] **Adaugare Manuala (AI OCR):** Daca un cod de bare nu are ingrediente pe net, utilizatorul ofera o poza cu eticheta si inteligenta artificiala (Gemini) populeaza automat baza noastra de date si ataseaza codul.
 
 ### Faza 4: Profil & Istoric
 - [ ] **Ecran Istoric:** Lista produselor scanate anterior (din `scanned_products`).
