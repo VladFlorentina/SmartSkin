@@ -42,7 +42,7 @@ console.log('\n[TEST 2] Fetch 3 ingredients...');
 try {
     const { data, error } = await supabase
         .from('ingredients')
-        .select('name, score, description')
+        .select('inci_name, score, description, "Restriction", "Function"')
         .limit(3);
 
     if (error) {
@@ -50,7 +50,7 @@ try {
     } else {
         console.log('[SUCCESS] Fetched ingredients:');
         data.forEach((ing, i) => {
-            console.log(`  ${i + 1}. ${ing.name} (score: ${ing.score})`);
+            console.log(`  ${i + 1}. ${ing.inci_name} (score: ${ing.score}) - ${ing.Function || 'N/A'}`);
         });
     }
 } catch (err) {

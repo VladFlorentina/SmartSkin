@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase.js';
-import { fetchProductByBarcode } from '../services/openBeautyFacts.js';
+import { fetchProductByBarcode, fetchProductMetadata } from '../services/openBeautyFacts.js';
 import { analyzeToxicity } from '../services/toxicityAnalyzer.js';
 import { extractIngredientsFromImage } from '../services/geminiService.js';
 
@@ -42,43 +42,56 @@ export async function getProductByBarcode(req, res) {
             }
         }
 
-        // 2. Fetch de la Open Beauty Facts
-        console.log(`[FETCH] Fetching product from OBF: ${barcode}`);
-        const productData = await fetchProductByBarcode(barcode);
+        // 2. Incearca OBF pentru metadata (non-blocking, cu timeout scurt)
+        console.log(`[OBF] Cautam metadata pentru: ${barcode}`);
+        const obfData = await fetchProductMetadata(barcode, 3000);
 
-        if (!productData) {
-            return res.status(404).json({
-                error: 'Product not found in database'
+        // 3. Daca OBF a gasit ingrediente -> analizeaza, salveaza in cache, returneaza
+        if (obfData?.ingredientsText) {
+            console.log(`[OBF] Ingrediente gasite pentru ${barcode} - analizam...`);
+            const analysis = await analyzeToxicity(obfData.ingredientsText);
+
+            // Salveaza in cache Supabase
+            const { data: savedProduct, error: saveError } = await supabase
+                .from('products')
+                .insert({
+                    barcode: barcode,
+                    name: obfData.name || 'Produs Necunoscut',
+                    brand: obfData.brand || 'Brand Necunoscut',
+                    ingredients_list: obfData.ingredientsText,
+                    image_url: obfData.imageUrl,
+                    category: obfData.categories || '',
+                    last_updated: new Date().toISOString()
+                })
+                .select()
+                .single();
+
+            if (saveError) {
+                console.error('Error saving OBF product to cache:', saveError);
+            }
+
+            return res.json({
+                id: savedProduct?.id || null,
+                barcode,
+                name: obfData.name || 'Produs Necunoscut',
+                brand: obfData.brand || 'Brand Necunoscut',
+                imageUrl: obfData.imageUrl,
+                ingredients_list: obfData.ingredientsText,
+                analysis,
+                source: 'live'
             });
         }
 
-        // 3. Analizeaza toxicitatea
-        const analysis = await analyzeToxicity(productData.ingredientsText);
-
-        // 4. Salveaza in cache (Supabase)
-        const { data: savedProduct, error: saveError } = await supabase
-            .from('products')
-            .insert({
-                barcode: productData.barcode,
-                name: productData.name,
-                brand: productData.brand,
-                ingredients_list: productData.ingredientsText,
-                image_url: productData.imageUrl,
-                category: productData.categories,
-                last_updated: new Date().toISOString()
-            })
-            .select()
-            .single();
-
-        if (saveError) {
-            console.error('Error saving to cache:', saveError);
-        }
-
-        // 5. Returneaza rezultatul complet
+        // 4. Produsul NU are ingrediente -> necesita OCR
+        //    Returnam 200 cu flag needsOcr + orice metadata am gasit de la OBF
+        console.log(`[OCR NEEDED] Produsul ${barcode} necesita scanare OCR a etichetei.`);
         return res.json({
-            ...productData,
-            analysis,
-            source: 'live'
+            needsOcr: true,
+            barcode,
+            name: obfData?.name || null,
+            brand: obfData?.brand || null,
+            imageUrl: obfData?.imageUrl || null,
+            message: 'Produsul nu a fost analizat inca. Fotografiaza eticheta cu ingredientele!'
         });
 
     } catch (error) {
@@ -193,8 +206,27 @@ export async function addManualProduct(req, res) {
     try {
         const { barcode, name, brand, base64Image, mimeType = 'image/jpeg' } = req.body;
 
+        // Validare input
         if (!name || !base64Image) {
             return res.status(400).json({ error: 'Numele produsului si imaginea cu eticheta sunt obligatorii' });
+        }
+
+        // Validare format base64 (verifica ca nu depaseste 10MB decodat)
+        const estimatedSizeBytes = (base64Image.length * 3) / 4;
+        const maxSizeMB = 10;
+        if (estimatedSizeBytes > maxSizeMB * 1024 * 1024) {
+            return res.status(400).json({ error: `Imaginea este prea mare (max ${maxSizeMB}MB)` });
+        }
+
+        // Validare mimeType
+        const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+        if (!allowedMimeTypes.includes(mimeType)) {
+            return res.status(400).json({ error: 'Format imagine invalid. Acceptam: JPEG, PNG, WebP' });
+        }
+
+        // Validare lungime nume
+        if (name.trim().length < 2 || name.trim().length > 200) {
+            return res.status(400).json({ error: 'Numele produsului trebuie sa aiba intre 2 si 200 caractere' });
         }
 
         console.log(`[MANUAL ADD] Procesare imagine pentru produsul: ${name}`);

@@ -1,12 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { useFocusEffect } from '@react-navigation/native';
 import Button from '../components/Button';
-import { supabase } from '../lib/supabase'; // for sign out
+import { supabase } from '../lib/supabase';
 
-export default function ScannerScreen({ onSignOut, onScanned, onViewHistory }) {
+export default function ScannerScreen({ navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
+
+    // Reseteaza scanner-ul cand user-ul revine pe acest ecran
+    useFocusEffect(
+        useCallback(() => {
+            setScanned(false);
+        }, [])
+    );
 
     // If permissions are still loading
     if (!permission) {
@@ -18,16 +26,16 @@ export default function ScannerScreen({ onSignOut, onScanned, onViewHistory }) {
         return (
             <View className="flex-1 items-center justify-center p-6 bg-brand-50">
                 <Text className="text-xl font-bold text-brand-900 mb-4 text-center">
-                    We need access to your camera to scan products.
+                    Avem nevoie de acces la camera pentru a scana produse.
                 </Text>
                 <Button
-                    title="Grant Permission"
+                    title="Permite Accesul"
                     onPress={requestPermission}
                 />
                 <View className="mt-4">
                     <Button
-                        title="Sign Out"
-                        onPress={onSignOut}
+                        title="Deconectare"
+                        onPress={() => supabase.auth.signOut()}
                         variant="ghost"
                     />
                 </View>
@@ -37,10 +45,7 @@ export default function ScannerScreen({ onSignOut, onScanned, onViewHistory }) {
 
     const handleBarcodeScanned = ({ type, data }) => {
         setScanned(true);
-        // Trimite codul scanat direct la App.js pentru a deschide ProductScreen
-        if (onScanned) {
-            onScanned(data);
-        }
+        navigation.navigate('Product', { barcode: data });
     };
 
     return (
@@ -57,28 +62,36 @@ export default function ScannerScreen({ onSignOut, onScanned, onViewHistory }) {
                     {/* Overlay top items */}
                     <TouchableOpacity
                         className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
-                        onPress={onSignOut}
+                        onPress={() => supabase.auth.signOut()}
                     >
-                        <Text className="text-white font-bold text-sm">Log Out</Text>
+                        <Text className="text-white font-bold text-sm">Iesire</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        className="p-3 bg-brand-500 rounded-full px-6 flex-row items-center self-start"
-                        onPress={onViewHistory}
-                    >
-                        <Text className="text-white font-bold text-sm mr-2">📚 Istoric</Text>
-                    </TouchableOpacity>
+                    <View className="flex-row self-start" style={{ gap: 8 }}>
+                        <TouchableOpacity
+                            className="p-3 bg-brand-500/80 rounded-full px-5 flex-row items-center"
+                            onPress={() => navigation.navigate('Profile')}
+                        >
+                            <Text className="text-white font-bold text-sm">👤 Profil</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            className="p-3 bg-brand-500 rounded-full px-5 flex-row items-center"
+                            onPress={() => navigation.navigate('History')}
+                        >
+                            <Text className="text-white font-bold text-sm">📚 Istoric</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View className="absolute bottom-16 w-full items-center">
                     <View className="bg-white/80 px-6 py-3 rounded-2xl">
                         <Text className="text-brand-900 font-bold">
-                            Point camera at a barcode
+                            Indreapta camera spre codul de bare
                         </Text>
                     </View>
                 </View>
             </CameraView>
             {scanned && (
                 <View className="absolute bottom-0 w-full p-6 bg-white rounded-t-3xl shadow-xl">
-                    <Button title="Tap to Scan Again" onPress={() => setScanned(false)} />
+                    <Button title="Scaneaza din nou" onPress={() => setScanned(false)} />
                 </View>
             )}
         </View>

@@ -3,13 +3,13 @@ import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity, Ale
 import { fetchProductDetails, saveToUserHistory } from '../lib/api';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
-import ChatScreen from './ChatScreen';
 
-export default function ProductScreen({ barcode, onBack, onAddManual }) {
+export default function ProductScreen({ navigation, route }) {
+    const { barcode } = route.params;
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
-    const [showChat, setShowChat] = useState(false);
+    const [ocrMetadata, setOcrMetadata] = useState(null); // Metadata de la OBF pentru pre-fill
 
     useEffect(() => {
         loadProduct();
@@ -19,7 +19,21 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
         try {
             setLoading(true);
             setNotFound(false);
+            setOcrMetadata(null);
             const data = await fetchProductDetails(barcode);
+
+            // Backend-ul returneaza needsOcr=true daca produsul nu a fost analizat inca
+            if (data.needsOcr) {
+                setOcrMetadata({
+                    barcode: data.barcode,
+                    name: data.name,
+                    brand: data.brand,
+                    imageUrl: data.imageUrl,
+                });
+                setNotFound(true);
+                return;
+            }
+
             setProduct(data);
 
             // Background task: salveaza in istoricul utilizatorului autentificat
@@ -50,31 +64,48 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
         );
     }
 
-    if (showChat && product) {
-        return <ChatScreen product={product} onBack={() => setShowChat(false)} />;
-    }
-
     if (notFound) {
         return (
-            <View className="flex-1 bg-brand-50 pt-20 px-6">
+            <View className="flex-1 bg-brand-50 pt-16 px-6">
                 <View className="items-center justify-center flex-1">
-                    <Text className="text-6xl mb-6">🕵️‍♀️</Text>
+                    <Text className="text-6xl mb-4">📸</Text>
                     <Text className="text-2xl font-bold text-brand-900 text-center mb-2">
-                        Produs Negasit
+                        Produs Nou Detectat!
                     </Text>
-                    <Text className="text-brand-600 text-center mb-8 px-4 leading-relaxed">
-                        Acest produs nu exista in baza noastra de date publica. Ai vrea sa il adaugi tu manual pentru a ajuta si alti utilizatori?
+
+                    {/* Arata metadata de la OBF daca exista */}
+                    {ocrMetadata?.name && (
+                        <View className="bg-white rounded-2xl p-4 mb-4 w-full items-center shadow-sm border border-brand-100">
+                            <Text className="text-brand-800 font-bold text-lg text-center">{ocrMetadata.name}</Text>
+                            {ocrMetadata.brand && (
+                                <Text className="text-brand-400 text-sm mt-1">{ocrMetadata.brand}</Text>
+                            )}
+                        </View>
+                    )}
+
+                    <Text className="text-brand-600 text-center mb-6 px-4 leading-relaxed">
+                        Acest produs nu a fost analizat inca. Fotografiaza eticheta cu ingredientele si AI-ul nostru il va analiza instant!
                     </Text>
+
+                    <View className="bg-brand-100/50 rounded-2xl p-4 mb-8 w-full">
+                        <Text className="text-brand-500 text-center text-sm leading-relaxed">
+                            💡 Rezultatul va fi salvat automat si va fi disponibil instant pentru toti utilizatorii SmartSkin care vor scana acelasi produs.
+                        </Text>
+                    </View>
 
                     <View className="w-full gap-y-4">
                         <Button
-                            title="Deschide Camera (OCR)"
-                            onPress={onAddManual}
+                            title="📸 Scaneaza Eticheta Ingredientelor"
+                            onPress={() => navigation.replace('ManualAdd', {
+                                barcode: ocrMetadata?.barcode || barcode,
+                                prefillName: ocrMetadata?.name || '',
+                                prefillBrand: ocrMetadata?.brand || '',
+                            })}
                         />
                         <Button
-                            title="Scaneaza Altceva"
+                            title="Inapoi la Scanner"
                             variant="outline"
-                            onPress={onBack}
+                            onPress={() => navigation.goBack()}
                         />
                     </View>
                 </View>
@@ -93,7 +124,7 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
                 {/* Header - Image & Back Button */}
                 <View className="relative bg-white rounded-b-[40px] shadow-brand-100 shadow-xl overflow-hidden pt-12 pb-8 px-6">
                     <TouchableOpacity
-                        onPress={onBack}
+                        onPress={() => navigation.goBack()}
                         className="absolute top-12 left-6 z-10 bg-brand-50 w-10 h-10 rounded-full items-center justify-center"
                     >
                         <Text className="text-brand-500 font-bold text-lg">←</Text>
@@ -146,13 +177,13 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
                         </Text>
                         <Button
                             title="Intreaba CosmetiBot ✨"
-                            onPress={() => setShowChat(true)}
+                            onPress={() => navigation.navigate('Chat', { product })}
                             variant="outline"
                         />
                     </View>
 
                     {/* Ingredients Breakdown */}
-                    <Text className="text-xl font-bold text-brand-900 mb-4 ml-2">Breakdown Ingrediente</Text>
+                    <Text className="text-xl font-bold text-brand-900 mb-4 ml-2">Analiza Ingredientelor</Text>
 
                     <View className="bg-white rounded-3xl shadow-brand-100 shadow-md p-6">
                         {product.analysis?.ingredientsBreakdown && product.analysis.ingredientsBreakdown.length > 0 ? (

@@ -5,9 +5,10 @@ import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { API_BASE_URL } from '../lib/api';
 
-export default function ManualAddScreen({ originalBarcode, onBack, onProductAdded }) {
-    const [name, setName] = useState('');
-    const [brand, setBrand] = useState('');
+export default function ManualAddScreen({ navigation, route }) {
+    const { barcode: originalBarcode, prefillName, prefillBrand } = route.params || {};
+    const [name, setName] = useState(prefillName || '');
+    const [brand, setBrand] = useState(prefillBrand || '');
     const [imageUri, setImageUri] = useState(null);
     const [base64Image, setBase64Image] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -69,9 +70,9 @@ export default function ManualAddScreen({ originalBarcode, onBack, onProductAdde
 
             Alert.alert('Succes!', 'Produsul a fost citit de AI si salvat cu succes!');
 
-            // Trimitem codul de bare fals inapoi ca sa deschida ProductScreen
-            if (onProductAdded && data.barcode) {
-                onProductAdded(data.barcode);
+            // Navigheaza la ProductScreen cu barcode-ul salvat
+            if (data.barcode) {
+                navigation.replace('Product', { barcode: data.barcode });
             }
 
         } catch (error) {
@@ -87,7 +88,7 @@ export default function ManualAddScreen({ originalBarcode, onBack, onProductAdde
             <Layout className="justify-center items-center">
                 <ActivityIndicator size="large" color="#FDA4AF" />
                 <Text className="text-brand-400 mt-4 font-medium text-center px-6">
-                    Inteligența Artificială Google Gemini extrage și analizează ingredientele din poză... 🤖📖
+                    Inteligenta Artificiala Google Gemini extrage si analizeaza ingredientele din poza... 🤖📖
                 </Text>
             </Layout>
         );
@@ -102,7 +103,7 @@ export default function ManualAddScreen({ originalBarcode, onBack, onProductAdde
 
                 <Text className="text-3xl font-bold text-brand-900 mb-2">Adauga Produs</Text>
                 <Text className="text-brand-500 mb-8 leading-relaxed">
-                    Ajută comunitatea introducând acest produs. AI-ul nostru va citi pozele tale și va calcula scorul automat!
+                    Ajuta comunitatea adaugand acest produs. AI-ul nostru va citi pozele tale si va calcula scorul automat!
                 </Text>
 
                 <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-xl mb-6">
@@ -131,7 +132,7 @@ export default function ManualAddScreen({ originalBarcode, onBack, onProductAdde
 
                     <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-2 mt-4">2. Ingrediente *</Text>
                     <Text className="text-xs text-brand-400 mb-4 ml-1">
-                        Pentru a analiza toxicitatea, avem nevoie de o poză clară exclusiv cu secțiunea "Ingredients" (INCI) de pe spatele ambalajului.
+                        Pentru a analiza toxicitatea, avem nevoie de o poza clara exclusiv cu sectiunea "Ingredients" (INCI) de pe spatele ambalajului.
                     </Text>
 
                     {imageUri ? (
@@ -142,7 +143,7 @@ export default function ManualAddScreen({ originalBarcode, onBack, onProductAdde
                     ) : (
                         <View className="mb-6">
                             <Button
-                                title="📸 Pozează Lista de Ingrediente"
+                                title="📸 Fotografiaza Lista de Ingrediente"
                                 onPress={pickImage}
                             />
                         </View>
@@ -158,7 +159,7 @@ export default function ManualAddScreen({ originalBarcode, onBack, onProductAdde
                     <Button
                         title="Anuleaza"
                         variant="ghost"
-                        onPress={onBack}
+                        onPress={() => navigation.goBack()}
                     />
                 </View>
 

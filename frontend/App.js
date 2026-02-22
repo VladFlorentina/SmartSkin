@@ -1,27 +1,57 @@
 import 'react-native-url-polyfill/auto';
 import { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './src/lib/supabase';
 import { NativeWindStyleSheet } from "nativewind";
+import ErrorBoundary from './src/components/ErrorBoundary';
+
+// Screens
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
 import ProductScreen from './src/screens/ProductScreen';
 import ManualAddScreen from './src/screens/ManualAddScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
-import Layout from './src/components/Layout';
+import ChatScreen from './src/screens/ChatScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
 
 NativeWindStyleSheet.setOutput({
   default: "native",
 });
 
+// Navigatoare separate pentru auth si app
+const AuthStack = createNativeStackNavigator();
+const AppStack = createNativeStackNavigator();
+
+// Stack pentru utilizatori neautentificati (Login/Register)
+function AuthNavigator() {
+  return (
+    <AuthStack.Navigator screenOptions={{ headerShown: false }}>
+      <AuthStack.Screen name="Login" component={LoginScreen} />
+      <AuthStack.Screen name="Register" component={RegisterScreen} />
+    </AuthStack.Navigator>
+  );
+}
+
+// Stack pentru utilizatori autentificati
+function AppNavigator() {
+  return (
+    <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Scanner" component={ScannerScreen} />
+      <AppStack.Screen name="Product" component={ProductScreen} />
+      <AppStack.Screen name="ManualAdd" component={ManualAddScreen} />
+      <AppStack.Screen name="History" component={HistoryScreen} />
+      <AppStack.Screen name="Chat" component={ChatScreen} />
+      <AppStack.Screen name="Profile" component={ProfileScreen} />
+    </AppStack.Navigator>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showRegister, setShowRegister] = useState(false);
-  const [showManualAdd, setShowManualAdd] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [scannedBarcode, setScannedBarcode] = useState(null);
 
   useEffect(() => {
     // 1. Verifica sesiunea curenta
@@ -47,56 +77,11 @@ export default function App() {
     );
   }
 
-  // Daca avem sesiune -> Arata ecranele principale
-  if (session && session.user) {
-    if (showManualAdd) {
-      return (
-        <ManualAddScreen
-          originalBarcode={scannedBarcode}
-          onBack={() => setShowManualAdd(false)}
-          onProductAdded={(barcode) => {
-            setShowManualAdd(false);
-            setScannedBarcode(barcode); // Afiseaza produsul nou adaugat imediat
-          }}
-        />
-      );
-    }
-
-    if (scannedBarcode) {
-      return (
-        <ProductScreen
-          barcode={scannedBarcode}
-          onBack={() => setScannedBarcode(null)}
-          onAddManual={() => setShowManualAdd(true)}
-        />
-      );
-    }
-
-    if (showHistory) {
-      return (
-        <HistoryScreen
-          onBack={() => setShowHistory(false)}
-          onProductSelect={(barcode) => {
-            setShowHistory(false);
-            setScannedBarcode(barcode);
-          }}
-        />
-      );
-    }
-
-    return (
-      <ScannerScreen
-        onSignOut={() => supabase.auth.signOut()}
-        onScanned={(barcode) => setScannedBarcode(barcode)}
-        onViewHistory={() => setShowHistory(true)}
-      />
-    );
-  }
-
-  // Daca NU avem sesiune -> Arata Login sau Register
-  return showRegister ? (
-    <RegisterScreen onLoginPress={() => setShowRegister(false)} />
-  ) : (
-    <LoginScreen onRegisterPress={() => setShowRegister(true)} />
+  return (
+    <ErrorBoundary>
+      <NavigationContainer>
+        {session && session.user ? <AppNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+    </ErrorBoundary>
   );
 }

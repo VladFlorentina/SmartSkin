@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { fetchUserHistory } from '../lib/api';
 
-export default function HistoryScreen({ onBack, onProductSelect }) {
+export default function HistoryScreen({ navigation }) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -41,7 +41,7 @@ export default function HistoryScreen({ onBack, onProductSelect }) {
 
         return (
             <TouchableOpacity
-                onPress={() => onProductSelect(productData.barcode)}
+                onPress={() => navigation.navigate('Product', { barcode: productData.barcode })}
                 className="bg-white rounded-3xl p-4 mb-4 flex-row items-center justify-between shadow-brand-100 shadow-sm border border-brand-50"
             >
                 <View className="flex-row items-center flex-1">
@@ -81,7 +81,7 @@ export default function HistoryScreen({ onBack, onProductSelect }) {
     return (
         <View className="flex-1 bg-brand-50">
             <View className="bg-white pt-12 pb-6 px-6 flex-row items-center border-b border-brand-100 shadow-sm z-10">
-                <TouchableOpacity onPress={onBack} className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4">
+                <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4">
                     <Text className="text-brand-500 font-bold text-lg">←</Text>
                 </TouchableOpacity>
                 <View>

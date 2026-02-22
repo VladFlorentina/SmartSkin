@@ -4,20 +4,24 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
+// Backend-ul foloseste Service Role Key pentru acces complet la DB (bypass RLS)
+// Anon Key se foloseste doar pe frontend (client-side, cu RLS activ)
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials in .env file');
+  throw new Error('Missing Supabase credentials in .env file (SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY)');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Test connection
+// Test connection - verifica accesul la tabelul ingredients (CosIng ~30,000 ingrediente)
 export async function testConnection() {
   try {
-    const { data, error } = await supabase.from('ingredients').select('count');
+    const { count, error } = await supabase
+      .from('ingredients')
+      .select('inci_name', { count: 'exact', head: true });
     if (error) throw error;
-    console.log('[INFO] Supabase connection successful');
+    console.log(`[INFO] Supabase connection successful - ${count || '?'} ingredients in database`);
     return true;
   } catch (error) {
     console.error('[ERROR] Supabase connection failed:', error.message);

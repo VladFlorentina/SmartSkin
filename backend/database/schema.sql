@@ -22,10 +22,11 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode);
 
 -- ========== Tabel: ingredients ==========
--- DEJA EXISTENT - Dictionar de toxicitate pentru ingrediente
--- Structura: name (text), score (integer), description (text)
--- Scoruri: -10 (interzis UE), -5 (restrictionat UE), 0 (admis UE)
--- NOTA: Acest tabel este deja populat cu date din CosIng (EU)
+-- Dictionar complet CosIng (~30,000 ingrediente INCI din UE)
+-- Structura: id, inci_name (text), score (integer), description (text), Restriction (text), Function (text)
+-- Scoruri: -10 (interzis, Anexa II), -5 (restrictionat, Anexa III), 0 (colorant/conservant admis, Anexa IV/V), 
+--           5 (filtru UV admis, Anexa VI), 10 (safe, fara restrictii)
+-- NOTA: Acest tabel este populat cu date din inventarul CosIng (EU) - fisierul db_ingrediente_final_corect.csv
 
 -- ========== Tabel: scanned_products ==========
 -- Istoric de scanari pentru fiecare utilizator

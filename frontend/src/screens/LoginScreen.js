@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import Input from '../components/Input';
 import Button from '../components/Button';
 
-export default function LoginScreen({ onRegisterPress }) {
+export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function LoginScreen({ onRegisterPress }) {
         });
 
         if (error) {
-            Alert.alert('Authentication Error', error.message);
+            Alert.alert('Eroare de autentificare', error.message);
         }
         setLoading(false);
     }
@@ -31,23 +31,23 @@ export default function LoginScreen({ onRegisterPress }) {
             <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-lg mb-6">
                 <View className="mb-8 items-center">
                     <Text className="text-3xl font-bold text-brand-900 mb-2">
-                        Welcome Back!
+                        Bine ai revenit!
                     </Text>
                     <Text className="text-brand-400 text-base font-medium">
-                        Sign in to your SmartSkin account
+                        Conecteaza-te la contul tau SmartSkin
                     </Text>
                 </View>
 
                 <Input
                     label="Email"
-                    placeholder="example@email.com"
+                    placeholder="exemplu@email.com"
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
                 />
 
                 <Input
-                    label="Password"
+                    label="Parola"
                     placeholder="******"
                     value={password}
                     onChangeText={setPassword}
@@ -56,15 +56,15 @@ export default function LoginScreen({ onRegisterPress }) {
 
                 <View className="mt-4">
                     <Button
-                        title="Sign In"
+                        title="Autentificare"
                         onPress={handleLogin}
                         loading={loading}
                     />
 
                     <View className="mt-4">
                         <Button
-                            title="Don't have an account? Sign Up"
-                            onPress={onRegisterPress}
+                            title="Nu ai cont? Inregistreaza-te"
+                            onPress={() => navigation.navigate('Register')}
                             variant="ghost"
                         />
                     </View>

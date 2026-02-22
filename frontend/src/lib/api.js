@@ -1,6 +1,11 @@
 import { supabase } from './supabase';
+import Constants from 'expo-constants';
 
-export const API_BASE_URL = 'http://192.168.100.26:3000/api';
+// IP-ul serverului backend se ia din configurarea Expo (app.json -> extra)
+// Fallback la localhost pentru development
+const BACKEND_IP = Constants.expoConfig?.extra?.backendIp || '192.168.100.26';
+const BACKEND_PORT = Constants.expoConfig?.extra?.backendPort || '3000';
+export const API_BASE_URL = `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
 
 /**
  * Helper to get authorization headers with JWT
@@ -56,10 +61,13 @@ export async function sendChatMessage(message, product = null) {
             };
         }
 
+        const headers = await getAuthHeaders();
+
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                ...headers,
             },
             body: JSON.stringify({
                 message: message,

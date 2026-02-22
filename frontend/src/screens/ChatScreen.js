@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { sendChatMessage } from '../lib/api';
 
-export default function ChatScreen({ product, onBack }) {
+export default function ChatScreen({ navigation, route }) {
+    const { product } = route.params || {};
     const [messages, setMessages] = useState([
         {
             id: '1',
@@ -59,7 +60,7 @@ export default function ChatScreen({ product, onBack }) {
         >
             {/* Header */}
             <View className="bg-white pt-12 pb-4 px-6 flex-row items-center border-b border-brand-100 shadow-sm z-10">
-                <TouchableOpacity onPress={onBack} className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4">
+                <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4">
                     <Text className="text-brand-500 font-bold text-lg">←</Text>
                 </TouchableOpacity>
                 <View>

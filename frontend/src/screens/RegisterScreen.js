@@ -5,7 +5,7 @@ import Layout from '../components/Layout';
 import Input from '../components/Input';
 import Button from '../components/Button';
 
-export default function RegisterScreen({ onLoginPress }) {
+export default function RegisterScreen({ navigation }) {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -13,7 +13,7 @@ export default function RegisterScreen({ onLoginPress }) {
 
     async function handleRegister() {
         if (!fullName) {
-            Alert.alert('Error', 'Please enter your full name.');
+            Alert.alert('Eroare', 'Te rugam sa introduci numele complet.');
             return;
         }
 
@@ -34,9 +34,9 @@ export default function RegisterScreen({ onLoginPress }) {
         });
 
         if (error) {
-            Alert.alert('Registration Error', error.message);
+            Alert.alert('Eroare la inregistrare', error.message);
         } else {
-            Alert.alert('Success!', 'Account created successfully. Please check your email for confirmation.');
+            Alert.alert('Succes!', 'Contul a fost creat cu succes. Verifica-ti email-ul pentru confirmare.');
         }
         setLoading(false);
     }
@@ -46,15 +46,15 @@ export default function RegisterScreen({ onLoginPress }) {
             <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-lg mb-6">
                 <View className="mb-8 items-center">
                     <Text className="text-3xl font-bold text-brand-900 mb-2">
-                        Create Account
+                        Creeaza Cont
                     </Text>
                     <Text className="text-brand-400 text-base font-medium">
-                        Start your beauty journey
+                        Incepe-ti calatoria spre ingrijire sigura
                     </Text>
                 </View>
 
                 <Input
-                    label="Full Name"
+                    label="Nume complet"
                     placeholder="Maria Popescu"
                     value={fullName}
                     onChangeText={setFullName}
@@ -62,14 +62,14 @@ export default function RegisterScreen({ onLoginPress }) {
 
                 <Input
                     label="Email"
-                    placeholder="example@email.com"
+                    placeholder="exemplu@email.com"
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
                 />
 
                 <Input
-                    label="Password"
+                    label="Parola"
                     placeholder="******"
                     value={password}
                     onChangeText={setPassword}
@@ -78,15 +78,15 @@ export default function RegisterScreen({ onLoginPress }) {
 
                 <View className="mt-4">
                     <Button
-                        title="Sign Up"
+                        title="Inregistrare"
                         onPress={handleRegister}
                         loading={loading}
                     />
 
                     <View className="mt-4">
                         <Button
-                            title="Already have an account? Sign In"
-                            onPress={onLoginPress}
+                            title="Ai deja cont? Autentifica-te"
+                            onPress={() => navigation.navigate('Login')}
                             variant="ghost"
                         />
                     </View>

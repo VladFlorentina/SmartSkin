@@ -1,22 +1,16 @@
 import { supabase } from '../config/supabase.js';
 
 // --- Lista Neagra Comerciala (ingrediente legale, dar controversate dpdv mediu/iritatii) ---
-// Reguli preluate pentru a "matura" scorul sa fie similar cu INCI Beauty
+// Aceste reguli se aplica DOAR daca ingredientul NU este gasit in baza de date CosIng.
+// Cu 30,000+ ingrediente INCI, acest fallback va fi rar folosit.
 const COMMERCIAL_WATCHLIST = [
-    { match: 'sulfate', penalty: 3, category: 'moderate', desc: 'Surfactant puternic. Poate irita pielea si scalpul. (Sulfate)' },
+    { match: 'sulfate', penalty: 3, category: 'moderate', desc: 'Surfactant puternic. Poate irita pielea si scalpul.' },
     { match: 'peg-', penalty: 3, category: 'moderate', desc: 'Compus etoxilat. Proces de fabricatie poluant. Permeabilizeaza pielea.' },
-    { match: 'dimethicone', penalty: 3, category: 'moderate', desc: 'Silicon. Greu biodegradabil, polueaza mediul.' },
-    { match: 'dimethiconol', penalty: 3, category: 'moderate', desc: 'Silicon derivat. Greu biodegradabil.' },
     { match: 'siloxane', penalty: 4, category: 'high', desc: 'Silicon ciclic. Impact negativ sever asupra mediului acvatic.' },
-    { match: 'edta', penalty: 3, category: 'moderate', desc: 'Agent chelator. Foarte slab biodegradabil, transportator de metale grele in natura.' },
-    { match: 'paraben', penalty: 4, category: 'high', desc: 'Conservant controversat. Potential perturbator endocrin.' },
+    { match: 'edta', penalty: 3, category: 'moderate', desc: 'Agent chelator. Foarte slab biodegradabil, transportator de metale grele.' },
     { match: 'bht', penalty: 4, category: 'high', desc: 'Antioxidant sintetic. Suspectat ca perturbator endocrin.' },
-    { match: 'phenoxyethanol', penalty: 3, category: 'moderate', desc: 'Conservant limitat la 1%. Poate irita in cantitati mari.' },
     { match: 'fragrance', penalty: 3, category: 'moderate', desc: 'Amestec nedeclarat de chimicale. Potential alergen ridicat.' },
     { match: 'parfum', penalty: 3, category: 'moderate', desc: 'Amestec nedeclarat de chimicale. Potential alergen ridicat.' },
-    { match: 'crosspolymer', penalty: 2, category: 'moderate', desc: 'Microplastic sintentic. Greu biodegradabil.' },
-    { match: 'polyquaternium', penalty: 2, category: 'moderate', desc: 'Polimer sintetic antistatic. Impact asupra mediului.' },
-    { match: 'guar hydroxypropyltrimonium chloride', penalty: 2, category: 'moderate', desc: 'Compus cuaternar de amoniu. Usor iritant.' },
     { match: 'cocamide mea', penalty: 3, category: 'moderate', desc: 'Amina derivata. Potential iritant si procesare toxica.' },
     { match: 'cocamide dea', penalty: 4, category: 'high', desc: 'Amina derivata. Posibil carcinogen (IARC).' }
 ];
@@ -32,40 +26,92 @@ function checkCommercialWatchlist(name) {
 }
 
 /**
- * Converteste score-ul din baza de date UE in risk level
- * Score UE: -10 (interzis), -5 (restrictionat), 0 (admis)
- * Risk level: 0-5 (0=safe, 5=toxic)
+ * Converteste score-ul din baza de date CosIng in risk level (0-5)
+ * 
+ * Score DB:  10 = Safe (fara restrictii UE)
+ *             5 = Filtru UV admis (Anexa VI)
+ *             0 = Colorant admis (Anexa IV) / Conservant admis (Anexa V) / Alte restrictii
+ *            -5 = Restrictionat (Anexa III)
+ *           -10 = Interzis (Anexa II)
+ * 
+ * Risk level: 0 = safe, 1 = minor, 2 = low, 3 = moderate, 4 = high, 5 = banned
+ * 
+ * NOTA: Alergenii parfumati (Limonene, Linalool, Citral, etc.) sunt in Anexa III
+ * dar sunt prezenti in ORICE produs parfumat in concentratii mici.
+ * Functia lor ajuta la diferentiere.
  */
-function scoreToRiskLevel(score) {
+function scoreToRiskLevel(score, dbFunction) {
     if (score === -10) return 5; // Interzis = risc maxim
-    if (score === -5) return 3;  // Restrictionat = risc moderat-ridicat
-    if (score === 0) return 0;   // Admis = sigur
+    if (score === -5) {
+        // Alergenii parfumati (Anexa III) cu functie exclusiv de PERFUMING/FRAGRANCE/DEODORANT
+        // sunt obisnuiti si prezenti in cantitati mici - risc 2 (low), nu 3 (moderate)
+        const func = (dbFunction || '').toUpperCase();
+        const isPureFragrance = func && (
+            func === 'PERFUMING' ||
+            func === 'FRAGRANCE' ||
+            func.split(',').map(f => f.trim()).every(f => 
+                ['PERFUMING', 'FRAGRANCE', 'DEODORANT', 'FLAVOURING', 'TONIC', 'SKIN CONDITIONING'].includes(f)
+            )
+        );
+        return isPureFragrance ? 2 : 3;  // Alergeni parfumati = 2, alte restrictii = 3
+    }
+    if (score === 0) return 1;   // Colorant/Conservant admis = risc minor (reglementat)
+    if (score === 5) return 0;   // Filtru UV admis = sigur
+    if (score === 10) return 0;  // Safe, fara restrictii = sigur
     return 2; // Default pentru scoruri necunoscute
+}
+/**
+ * Determina categoria de risc bazat pe scor si descriere
+ * Adaptat pentru noile descrieri in engleza din baza de date CosIng
+ */
+function getCategoryFromDescription(score, description) {
+    const desc = (description?.toLowerCase() || '');
+
+    // Prioritate: scorul numeric (cel mai fiabil)
+    if (score === -10) return 'banned';
+    if (score === -5) return 'restricted';
+    if (score === 5) return 'uv_filter';
+    if (score === 10) return 'safe';
+
+    // Pentru score === 0, determinam din descriere
+    if (desc.includes('colorant')) return 'colorant';
+    if (desc.includes('preservative')) return 'preservative';
+    if (desc.includes('carcinogen') || desc.includes('cmr')) return 'banned'; // Cazuri speciale cu score 0 dar CMR
+    if (desc.includes('annex iv')) return 'colorant';
+    if (desc.includes('annex v')) return 'preservative';
+
+    return 'regulated'; // Alte restrictii
 }
 
 /**
- * Determina categoria de risc bazat pe descriere
+ * Genereaza o descriere user-friendly bazata pe datele din DB
  */
-function getCategoryFromDescription(description) {
-    // Normalizare text pentru a elimina diacriticele din comparatie
-    const desc = (description?.toLowerCase() || '')
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function buildDescription(dbDescription, dbFunction) {
+    const parts = [];
 
-    if (desc.includes('interzis')) return 'banned';
-    if (desc.includes('restrictionat')) return 'restricted';
-    if (desc.includes('colorant')) return 'safe';
+    // Adauga descrierea din DB (Prohibited/Restricted/Safe/etc.)
+    if (dbDescription) {
+        parts.push(dbDescription);
+    }
 
-    // Incearca sa detecteze din anexe
-    if (desc.includes('anexa ii')) return 'banned';
-    if (desc.includes('anexa iii')) return 'restricted';
-    if (desc.includes('anexa iv') || desc.includes('anexa v') || desc.includes('anexa vi')) return 'safe';
+    // Adauga functia ingredientului (SKIN CONDITIONING, EMOLLIENT, etc.)
+    if (dbFunction && dbFunction.trim()) {
+        const functionClean = dbFunction
+            .split(',')
+            .map(f => f.trim().toLowerCase().replace(/^(.)/, c => c.toUpperCase()))
+            .join(', ');
+        parts.push(`Functie: ${functionClean}`);
+    }
 
-    return 'unknown';
+    return parts.join(' | ') || 'Fara informatii';
 }
 
 /**
  * Analizeaza lista de ingrediente si calculeaza scorul de siguranta
- * Foloseste datele REALE din Supabase (2,500+ ingrediente UE)
+ * Foloseste datele REALE din Supabase (~30,000 ingrediente CosIng/UE)
+ * 
+ * OPTIMIZARE: Face un singur query batch in loc de N queries separate
+ * 
  * @param {string} ingredientsText - Lista de ingrediente (format text INCI)
  * @returns {Promise<Object>} - Rezultatul analizei
  */
@@ -82,7 +128,7 @@ export async function analyzeToxicity(ingredientsText) {
     // Parsare ingrediente (split dupa virgula si curatare)
     const ingredientNames = ingredientsText
         .split(',')
-        .map(ing => ing.trim())
+        .map(ing => ing.trim().replace(/\s+/g, ' '))
         .filter(ing => ing.length > 0);
 
     if (ingredientNames.length === 0) {
@@ -94,82 +140,115 @@ export async function analyzeToxicity(ingredientsText) {
         };
     }
 
-    // Query Supabase pentru toate ingredientele
+    // ============================================================
+    // NORMALIZARE NUME INCI
+    // Open Beauty Facts trimite uneori formate ca:
+    //   "Parfum (Fragrance)"  -> trebuie sa devina "PARFUM"
+    //   "Oryza Sativa (Rice) Starch" -> "ORYZA SATIVA STARCH"
+    //   "Alcohol Denat." -> "ALCOHOL DENAT."
+    // Scoatem parantezele cu sinonime dar pastram numele principal
+    // ============================================================
+    const normalizedNames = ingredientNames.map(name => {
+        // Scoate continutul din paranteze (sinonime OBF)
+        // ex: "Parfum (Fragrance)" -> "Parfum"
+        // ex: "Oryza Sativa (Rice) Starch" -> "Oryza Sativa  Starch"
+        let cleaned = name.replace(/\([^)]*\)/g, '').trim();
+        // Colpaseaza spatiile multiple ramase
+        cleaned = cleaned.replace(/\s+/g, ' ').trim();
+        return cleaned;
+    });
+
+    // ============================================================
+    // BATCH QUERY: Incarcam TOATE ingredientele dintr-o singura cerere
+    // In loc de N queries separate (una per ingredient), facem 1 singur SELECT
+    // ============================================================
+    const upperNames = normalizedNames.map(n => n.toUpperCase());
+    // Includem si numele originale (nemodificate) ca fallback
+    const upperOriginals = ingredientNames.map(n => n.toUpperCase());
+    // Combinam ambele seturi unice pentru a maximiza sansa de match
+    const allNamesToQuery = [...new Set([...upperNames, ...upperOriginals])];
+
+    const { data: dbIngredients, error: dbError } = await supabase
+        .from('ingredients')
+        .select('inci_name, score, description, "Restriction", "Function"')
+        .in('inci_name', allNamesToQuery);
+
+    if (dbError) {
+        console.error('[DB ERROR] Batch query failed:', dbError);
+    }
+
+    // Cream un Map pentru lookup rapid: INCI_NAME (uppercase) -> ingredient data
+    const dbMap = new Map();
+    if (dbIngredients && dbIngredients.length > 0) {
+        for (const ing of dbIngredients) {
+            dbMap.set(ing.inci_name.toUpperCase(), ing);
+        }
+    }
+
+    console.log(`[ANALYSIS] ${ingredientNames.length} ingrediente parsate, ${dbMap.size} gasite in DB (${ingredientNames.length - dbMap.size} negasite)`);
+
+    // ============================================================
+    // Construim breakdown-ul per ingredient
+    // ============================================================
     const ingredientsBreakdown = [];
 
-    for (const rawName of ingredientNames) {
-        let name = rawName.trim();
-        const normalized = name.toLowerCase().replace(/\s+/g, ' ').replace(/[^\w\s\-]/g, '');
+    for (let i = 0; i < ingredientNames.length; i++) {
+        const originalName = ingredientNames[i].trim();
+        const cleanedName = normalizedNames[i];
+        const upperCleaned = cleanedName.toUpperCase();
+        const upperOriginal = originalName.toUpperCase();
 
-        // 1. Cauta ingredient in Supabase (Excat Match)
-        let { data, error } = await supabase
-            .from('ingredients')
-            .select('name, score, description')
-            .ilike('name', name)
-            .limit(1);
+        // 1. Cautam in rezultatul batch-ului (match pe INCI name - normalizat si original)
+        const dbMatch = dbMap.get(upperCleaned) || dbMap.get(upperOriginal);
 
-        // Daca nu am gasit exact, incercam un match exact pe numele normalizat
-        if (!data || data.length === 0) {
-            const partialRes = await supabase
-                .from('ingredients')
-                .select('name, score, description')
-                .ilike('name', normalized)
-                .limit(1);
-            data = partialRes.data;
-            error = partialRes.error;
-        }
-
-        if (error) {
-            console.error(`Error querying ingredient "${name}":`, error);
-            // Daca e eroare tehnica
-            ingredientsBreakdown.push({
-                name: name,
-                score: 0,
-                riskLevel: 2,
-                riskCategory: 'unknown',
-                description: 'Eroare la cautare in baza de date'
-            });
-            continue;
-        }
-
-        if (data && data.length > 0) {
-            // Ingredient gasit in baza de date
-            const ingredient = data[0];
-            const riskLevel = scoreToRiskLevel(ingredient.score);
-            const category = getCategoryFromDescription(ingredient.description);
+        if (dbMatch) {
+            // Ingredient gasit in baza de date CosIng
+            const riskLevel = scoreToRiskLevel(dbMatch.score, dbMatch.Function);
+            const category = getCategoryFromDescription(dbMatch.score, dbMatch.description);
+            const description = buildDescription(dbMatch.description, dbMatch.Function);
 
             ingredientsBreakdown.push({
-                name: ingredient.name,
-                score: ingredient.score,
+                name: dbMatch.inci_name,
+                score: dbMatch.score,
                 riskLevel: riskLevel,
                 riskCategory: category,
-                description: ingredient.description
+                description: description,
+                restriction: dbMatch.Restriction || null,
+                function: dbMatch.Function || null
             });
         } else {
-            // Nu e pe lista de interdictii/restrictii UE din Supabase.
-            // Cautam in "Lista Neagra" generica (INCI Beauty style)
-            const watchlistMatch = checkCommercialWatchlist(name);
+            // NU s-a gasit in DB. Posibil: nume diferit, prescurtare, sau ingredient foarte nou.
+            // Incercam fallback pe watchlist-ul comercial
+            const watchlistMatch = checkCommercialWatchlist(originalName);
 
             if (watchlistMatch) {
                 ingredientsBreakdown.push({
-                    name: name,
-                    score: -watchlistMatch.penalty, // Punctaj negativ fals pentru scor
-                    riskLevel: watchlistMatch.penalty, // 2, 3 sau 4
+                    name: originalName,
+                    score: -watchlistMatch.penalty,
+                    riskLevel: watchlistMatch.penalty,
                     riskCategory: watchlistMatch.category,
-                    description: watchlistMatch.desc
+                    description: watchlistMatch.desc,
+                    restriction: null,
+                    function: null
                 });
             } else {
-                // Ingredient 100% comun și nereglementat ca periculos/controversat
+                // Ingredient necunoscut - il marcam ca "unknown" pentru transparenta
                 ingredientsBreakdown.push({
-                    name: name,
-                    score: 0,
-                    riskLevel: 0, // Nivel 0 (Verde) - Sigur 
-                    riskCategory: 'safe',
-                    description: 'Ingredient sigur, acceptat pe scara larga.'
+                    name: originalName,
+                    score: null,
+                    riskLevel: 0,
+                    riskCategory: 'unknown',
+                    description: 'Ingredient negasit in baza de date CosIng/UE',
+                    restriction: null,
+                    function: null
                 });
             }
         }
     }
+
+    // Statistici de matching pentru debugging
+    const foundCount = ingredientsBreakdown.filter(i => i.riskCategory !== 'unknown').length;
+    const notFoundCount = ingredientsBreakdown.filter(i => i.riskCategory === 'unknown').length;
 
     // Calculare scor siguranta
     const score = calculateSafetyScore(ingredientsBreakdown);
@@ -180,33 +259,32 @@ export async function analyzeToxicity(ingredientsText) {
     return {
         safetyScore: Math.round(score),
         totalIngredients: ingredientsBreakdown.length,
+        foundInDatabase: foundCount,
+        notFoundInDatabase: notFoundCount,
         ingredientsBreakdown,
         warnings,
         riskSummary: getRiskSummary(score),
-        _source: 'supabase' // Flag pentru debugging
+        _source: 'supabase_cosing'
     };
 }
 
 /**
  * Algoritm de calcul scor toxicitate (0-100, 100 = cel mai sigur)
- */
-/**
- * Algoritm de calcul scor toxicitate (0-100, 100 = cel mai sigur)
- * Include "Regula primelor 5" pentru a simula concentratia
+ * Include "Regula primelor 5" pentru a simula concentratia (INCI lists are ordered by concentration)
  */
 function calculateSafetyScore(ingredients) {
     if (ingredients.length === 0) return 0;
 
-    // REGULA CHEIE: ingredientul cel mai rău limitează scorul maxim
+    // REGULA CHEIE: ingredientul cel mai rau limiteaza scorul maxim
     const maxRiskLevel = Math.max(...ingredients.map(i => i.riskLevel));
 
-    // Scor maxim posibil bazat pe cel mai rău ingredient (Stil INCI Beauty)
+    // Scor maxim posibil bazat pe cel mai rau ingredient (Stil INCI Beauty)
     const scoreCapByWorstIngredient = {
         5: 20,  // Ingredient interzis → scor max 20/100
-        4: 45,  // Risc ridicat → max 45/100
-        3: 70,  // Risc moderat → max 70/100
-        2: 85,  // Risc scăzut → max 85/100
-        1: 95,  // Risc minor → max 95/100
+        4: 45,  // Risc ridicat (watchlist) → max 45/100
+        3: 70,  // Risc moderat (restrictionat UE) → max 70/100
+        2: 85,  // Risc scazut → max 85/100
+        1: 95,  // Risc minor (colorant/conservant reglementat) → max 95/100
         0: 100  // Tot safe → poate ajunge 100
     };
 
@@ -215,33 +293,33 @@ function calculateSafetyScore(ingredients) {
     let score = 100;
 
     ingredients.forEach((ing, index) => {
-        // Poziția în listă = concentrație estimată
-        // Primele 5: concentrație mare, ultimele: urme
+        // Pozitia in lista INCI = concentratie estimata
+        // Primele 5: concentratie mare, ultimele: urme
         let positionMultiplier;
-        if (index < 5) positionMultiplier = 1.5;
-        else if (index < 10) positionMultiplier = 1.0;
-        else positionMultiplier = 0.6; // La final sunt în cantități mici
+        if (index < 5) positionMultiplier = 1.5;       // Concentratie mare
+        else if (index < 10) positionMultiplier = 1.0;  // Concentratie medie
+        else positionMultiplier = 0.6;                   // Urme (trace amounts)
 
         let penalty = 0;
         switch (ing.riskLevel) {
-            case 5: penalty = 40; break;  // Interzis
-            case 4: penalty = 20; break;  // Risc ridicat
-            case 3: penalty = 8; break;  // Risc moderat
-            case 2: penalty = 0; break;  // Necunoscut → nu penaliza, doar scade cap-ul la 85.
-            case 1: penalty = 1; break;  // Risc minor
-            default: penalty = 0; break;  // Safe
+            case 5: penalty = 40; break;  // Interzis UE
+            case 4: penalty = 20; break;  // Risc ridicat (watchlist)
+            case 3: penalty = 8; break;   // Restrictionat UE
+            case 2: penalty = 3; break;   // Risc scazut
+            case 1: penalty = 1; break;   // Risc minor (colorant/conservant reglementat)
+            default: penalty = 0; break;  // Safe / unknown (nu penalizam ce nu stim)
         }
 
         score -= (penalty * positionMultiplier);
     });
 
-    // Cocktail effect: dacă ai 3+ ingrediente de risc 3+, penalizare extra
+    // Cocktail effect: daca ai 3+ ingrediente de risc 3+, penalizare extra
     const riskyCount = ingredients.filter(i => i.riskLevel >= 3).length;
     if (riskyCount >= 3) {
         score -= (riskyCount - 2) * 5;
     }
 
-    // Aplică cap-ul bazat pe cel mai rău ingredient
+    // Aplica cap-ul bazat pe cel mai rau ingredient
     score = Math.min(score, scoreCap);
 
     return Math.max(0, Math.round(score));
@@ -258,18 +336,19 @@ function generateWarnings(ingredients) {
     const unknown = ingredients.filter(i => i.riskCategory === 'unknown');
 
     if (banned.length > 0) {
-        warnings.push(`ATENTIE: ${banned.length} ingrediente INTERZISE in UE!`);
+        const names = banned.map(i => i.name).join(', ');
+        warnings.push(`🚫 ATENTIE: ${banned.length} ingrediente INTERZISE in UE! (${names})`);
     }
     if (restricted.length > 0) {
-        warnings.push(`AVERTISMENT: ${restricted.length} ingrediente restrictionate in UE`);
+        warnings.push(`⚠️ AVERTISMENT: ${restricted.length} ingrediente restrictionate in UE`);
     }
     if (unknown.length > 0) {
-        warnings.push(`INFO: ${unknown.length} ingrediente necunoscute in baza de date UE`);
+        warnings.push(`ℹ️ INFO: ${unknown.length} ingrediente negasite in baza de date CosIng`);
     }
 
     const highRisk = ingredients.filter(i => i.riskLevel >= 4);
     if (highRisk.length > 0) {
-        warnings.push(`RISC RIDICAT: ${highRisk.length} ingrediente cu risc ridicat`);
+        warnings.push(`🔴 RISC RIDICAT: ${highRisk.length} ingrediente cu risc ridicat`);
     }
 
     return warnings;
@@ -285,3 +364,15 @@ function getRiskSummary(score) {
     if (score >= 20) return 'Risc ridicat - nu se recomanda';
     return 'Risc foarte ridicat - contine ingrediente interzise!';
 }
+
+// Exporturi pentru teste unitare
+export const _testExports = {
+    scoreToRiskLevel,
+    getCategoryFromDescription,
+    buildDescription,
+    calculateSafetyScore,
+    generateWarnings,
+    getRiskSummary,
+    checkCommercialWatchlist,
+    COMMERCIAL_WATCHLIST
+};
