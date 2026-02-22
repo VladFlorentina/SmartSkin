@@ -8,6 +8,7 @@ import RegisterScreen from './src/screens/RegisterScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
 import ProductScreen from './src/screens/ProductScreen';
 import ManualAddScreen from './src/screens/ManualAddScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 import Layout from './src/components/Layout';
 
 NativeWindStyleSheet.setOutput({
@@ -19,6 +20,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [showRegister, setShowRegister] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState(null);
 
   useEffect(() => {
@@ -70,10 +72,23 @@ export default function App() {
       );
     }
 
+    if (showHistory) {
+      return (
+        <HistoryScreen
+          onBack={() => setShowHistory(false)}
+          onProductSelect={(barcode) => {
+            setShowHistory(false);
+            setScannedBarcode(barcode);
+          }}
+        />
+      );
+    }
+
     return (
       <ScannerScreen
         onSignOut={() => supabase.auth.signOut()}
         onScanned={(barcode) => setScannedBarcode(barcode)}
+        onViewHistory={() => setShowHistory(true)}
       />
     );
   }

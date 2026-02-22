@@ -4,7 +4,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import Button from '../components/Button';
 import { supabase } from '../lib/supabase'; // for sign out
 
-export default function ScannerScreen({ onSignOut, onScanned }) {
+export default function ScannerScreen({ onSignOut, onScanned, onViewHistory }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
 
@@ -59,7 +59,13 @@ export default function ScannerScreen({ onSignOut, onScanned }) {
                         className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
                         onPress={onSignOut}
                     >
-                        <Text className="text-white font-bold text-sm">Sign Out</Text>
+                        <Text className="text-white font-bold text-sm">Log Out</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        className="p-3 bg-brand-500 rounded-full px-6 flex-row items-center self-start"
+                        onPress={onViewHistory}
+                    >
+                        <Text className="text-white font-bold text-sm mr-2">📚 Istoric</Text>
                     </TouchableOpacity>
                 </View>
                 <View className="absolute bottom-16 w-full items-center">

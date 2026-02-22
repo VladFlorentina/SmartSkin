@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
-import { fetchProductDetails } from '../lib/api';
+import { fetchProductDetails, saveToUserHistory } from '../lib/api';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
+import ChatScreen from './ChatScreen';
 
 export default function ProductScreen({ barcode, onBack, onAddManual }) {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [showChat, setShowChat] = useState(false);
 
     useEffect(() => {
         loadProduct();
@@ -19,6 +21,11 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
             setNotFound(false);
             const data = await fetchProductDetails(barcode);
             setProduct(data);
+
+            // Background task: salveaza in istoricul utilizatorului autentificat
+            if (data && !data.error) {
+                saveToUserHistory(data.id, barcode, data.analysis?.safetyScore);
+            }
         } catch (error) {
             console.log('Product not found or error:', error);
             setNotFound(true);
@@ -41,6 +48,10 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
                 <Text className="text-brand-400 mt-4 font-medium">Cautam produsul in baza de date... 🌸</Text>
             </Layout>
         );
+    }
+
+    if (showChat && product) {
+        return <ChatScreen product={product} onBack={() => setShowChat(false)} />;
     }
 
     if (notFound) {
@@ -135,7 +146,7 @@ export default function ProductScreen({ barcode, onBack, onAddManual }) {
                         </Text>
                         <Button
                             title="Intreaba CosmetiBot ✨"
-                            onPress={() => Alert.alert('In curand', 'Chatbot-ul AI va fi disponibil in Faza 5!')}
+                            onPress={() => setShowChat(true)}
                             variant="outline"
                         />
                     </View>

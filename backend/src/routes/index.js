@@ -2,7 +2,7 @@ import express from 'express';
 import { supabase } from '../config/supabase.js';
 import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct } from '../controllers/productController.js';
 import { sendMessage } from '../controllers/aiController.js';
-// import { authMiddleware } from '../middleware/auth.js'; // TODO: Faza 2
+import { authMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -14,13 +14,8 @@ router.get('/products/:barcode', getProductByBarcode);
 router.post('/products/manual', addManualProduct);
 
 // ========== History Routes (require auth) ==========
-// Deocamdata comentate pana implementam autentificarea in Faza 2
-// router.post('/history', authMiddleware, saveToHistory);
-// router.get('/history', authMiddleware, getUserHistory);
-
-// Versiuni temporare fara auth pentru testare
-router.post('/history', saveToHistory);
-router.get('/history', getUserHistory);
+router.post('/history', authMiddleware, saveToHistory);
+router.get('/history', authMiddleware, getUserHistory);
 
 // ========== AI Chatbot Routes (Faza 2 - Gemini) ==========
 router.post('/chat', sendMessage);
