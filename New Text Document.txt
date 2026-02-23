@@ -5,3 +5,5 @@ Dacă NU găsește produsul, îl caută automat pe OpenBeautyFacts API (o bază 
 Dacă îl găsește acolo, îl salvează la tine în baza de date (pentru viitor) și îl trimite utilizatorului , ce parere ai ?
 
 https://world.openbeautyfacts.org/
+
+https://www.kaggle.com/datasets/amaboh/cosing-ingredients-inci-list?select=COSING_Ingredients-Fragrance+Inventory_v2.csv
