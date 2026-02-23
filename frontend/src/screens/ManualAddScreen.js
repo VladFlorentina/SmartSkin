@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { API_BASE_URL } from '../lib/api';
+import { supabase } from '../lib/supabase';
 
 export default function ManualAddScreen({ navigation, route }) {
     const { barcode: originalBarcode, prefillName, prefillBrand } = route.params || {};
@@ -22,7 +23,7 @@ export default function ManualAddScreen({ navigation, route }) {
         }
 
         const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ImagePicker.MediaType.Images,
             allowsEditing: true, // ii va permite userului sa taie doar lista
             quality: 0.8,
             base64: true, // FOARTE IMPORTANT pentru Gemini
@@ -47,11 +48,16 @@ export default function ManualAddScreen({ navigation, route }) {
         try {
             setLoading(true);
 
+            // Obtine token-ul JWT al utilizatorului autentificat
+            const { data: { session } } = await supabase.auth.getSession();
+            const authHeader = session ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+
             // Fetch to our new backend OCR endpoint
             const response = await fetch(`${API_BASE_URL}/products/manual`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...authHeader,
                 },
                 body: JSON.stringify({
                     barcode: originalBarcode, // Salvam codul de bare real in DB

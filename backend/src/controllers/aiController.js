@@ -3,6 +3,7 @@ import { supabase } from '../config/supabase.js';
 
 // Initializare Gemini Client (folosind cheia din .env)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 /**
  * POST /api/chat
@@ -51,23 +52,30 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
         }
 
         // Initializeaza modelul
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
-        // Trimite mesajul + istoric (simplificat pentru demo)
-        // In productie am incarca si istoricul conversatiei anterioare
-        const chat = model.startChat({
-            history: [
-                {
-                    role: "user",
-                    parts: [{ text: systemPrompt }],
-                },
-                {
-                    role: "model",
-                    parts: [{ text: "Am inteles. Sunt gata sa analizez produsul si sa raspund la intrebari despre ingrediente." }],
-                },
-            ],
-        });
+        // Construim istoricul real al conversatiei pentru Gemini
+        // Formatul history primit din frontend: [{role: 'user'|'model', text: '...'}]
+        const receivedHistory = req.body.history || [];
 
+        // Istoricul Gemini incepe cu prompt-ul de sistem, urmat de conversatia reala
+        const geminiHistory = [
+            {
+                role: 'user',
+                parts: [{ text: systemPrompt }],
+            },
+            {
+                role: 'model',
+                parts: [{ text: 'Am inteles. Sunt gata sa analizez produsul si sa raspund la intrebari despre ingrediente.' }],
+            },
+            // Adaugam istoricul real al conversatiei (mesajele anterioare)
+            ...receivedHistory.map(msg => ({
+                role: msg.role,
+                parts: [{ text: msg.text }],
+            })),
+        ];
+
+        const chat = model.startChat({ history: geminiHistory });
         const result = await chat.sendMessage(message);
         const responseText = result.response.text();
 

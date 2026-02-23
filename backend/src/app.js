@@ -13,7 +13,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== Middleware ==========
-app.use(cors()); // Permite requests de la React Native
+// CORS deschis pentru development (React Native + Expo Go)
+// In productie, inlocuieste cu: cors({ origin: 'https://domeniultau.com' })
+app.use(cors());
 app.use(express.json({ limit: '50mb' })); // Marit la 50mb pentru pozele OCR (base64)
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 

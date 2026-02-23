@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import Button from '../components/Button';
-import { supabase } from '../lib/supabase';
 
 export default function ScannerScreen({ navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
@@ -34,8 +33,8 @@ export default function ScannerScreen({ navigation }) {
                 />
                 <View className="mt-4">
                     <Button
-                        title="Deconectare"
-                        onPress={() => supabase.auth.signOut()}
+                        title="Inapoi"
+                        onPress={() => navigation.navigate('Home')}
                         variant="ghost"
                     />
                 </View>
@@ -62,9 +61,9 @@ export default function ScannerScreen({ navigation }) {
                     {/* Overlay top items */}
                     <TouchableOpacity
                         className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
-                        onPress={() => supabase.auth.signOut()}
+                        onPress={() => navigation.navigate('Home')}
                     >
-                        <Text className="text-white font-bold text-sm">Iesire</Text>
+                        <Text className="text-white font-bold text-sm">Acasa</Text>
                     </TouchableOpacity>
                     <View className="flex-row self-start" style={{ gap: 8 }}>
                         <TouchableOpacity

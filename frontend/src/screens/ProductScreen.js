@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { fetchProductDetails, saveToUserHistory } from '../lib/api';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
+import AnimatedScoreRing from '../components/AnimatedScoreRing';
 
 export default function ProductScreen({ navigation, route }) {
     const { barcode } = route.params;
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
+    const [isOffline, setIsOffline] = useState(false);
     const [ocrMetadata, setOcrMetadata] = useState(null); // Metadata de la OBF pentru pre-fill
 
     useEffect(() => {
@@ -19,6 +21,7 @@ export default function ProductScreen({ navigation, route }) {
         try {
             setLoading(true);
             setNotFound(false);
+            setIsOffline(false);
             setOcrMetadata(null);
             const data = await fetchProductDetails(barcode);
 
@@ -41,25 +44,58 @@ export default function ProductScreen({ navigation, route }) {
                 saveToUserHistory(data.id, barcode, data.analysis?.safetyScore);
             }
         } catch (error) {
-            console.log('Product not found or error:', error);
-            setNotFound(true);
+            if (error.isNetworkError) {
+                setIsOffline(true);
+            } else {
+                console.log('Product not found or error:', error);
+                setNotFound(true);
+            }
         } finally {
             setLoading(false);
         }
     }
 
-    // Pale color logic based on score
+    // Color logic based on score - noua paleta pale
     const getScoreColor = (score) => {
-        if (score >= 80) return { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-200' };
-        if (score >= 40) return { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-200' };
-        return { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200' };
+        if (score >= 80) return { bg: 'bg-mint-50', text: 'text-mint-600', border: 'border-mint-200' };
+        if (score >= 40) return { bg: 'bg-peach-50', text: 'text-peach-600', border: 'border-peach-200' };
+        return { bg: 'bg-brand-50', text: 'text-brand-600', border: 'border-brand-200' };
     };
 
     if (loading) {
         return (
             <Layout className="justify-center items-center">
-                <ActivityIndicator size="large" color="#FDA4AF" />
+                <ActivityIndicator size="large" color="#D97AAA" />
                 <Text className="text-brand-400 mt-4 font-medium">Cautam produsul in baza de date... 🌸</Text>
+            </Layout>
+        );
+    }
+
+    if (isOffline) {
+        return (
+            <Layout className="justify-center items-center px-6">
+                <Text className="text-6xl mb-4">📡</Text>
+                <Text className="text-2xl font-bold text-brand-900 text-center mb-3">
+                    Fara Conexiune
+                </Text>
+                <Text className="text-brand-500 text-center leading-relaxed mb-8 px-4">
+                    Nu am putut contacta serverul.{"\n"}
+                    Asigura-te ca esti conectata la aceeasi retea Wi-Fi ca serverul si incearca din nou.
+                </Text>
+                <View className="bg-brand-50 border border-brand-100 rounded-2xl p-4 w-full mb-8">
+                    <Text className="text-brand-400 text-xs text-center font-mono">
+                        Cod produs: {barcode}
+                    </Text>
+                </View>
+                <Button
+                    title="Incearca din nou"
+                    onPress={loadProduct}
+                />
+                <Button
+                    title="Inapoi"
+                    variant="outline"
+                    onPress={() => navigation.goBack()}
+                />
             </Layout>
         );
     }
@@ -153,22 +189,52 @@ export default function ProductScreen({ navigation, route }) {
                 </View>
 
                 <View className="px-6 mt-8">
-                    {/* Safety Score Card */}
-                    <View className={`p-6 rounded-3xl border ${scoreColors.border} ${scoreColors.bg} flex-row items-center justify-between mb-8 shadow-sm`}>
-                        <View>
-                            <Text className={`text-sm font-bold ${scoreColors.text} opacity-80 uppercase tracking-widest mb-1`}>
-                                Scor Siguranta
-                            </Text>
-                            <Text className={`text-4xl font-extrabold ${scoreColors.text}`}>
-                                {safetyScore}<Text className="text-xl">/100</Text>
-                            </Text>
-                        </View>
-                        <View className={`w-16 h-16 rounded-full border-4 ${scoreColors.border} items-center justify-center bg-white opacity-80`}>
-                            <Text className={`text-2xl ${scoreColors.text}`}>
-                                {safetyScore >= 80 ? '🌱' : safetyScore >= 40 ? '⚠️' : '❌'}
-                            </Text>
-                        </View>
+                    {/* Safety Score Card - animated ring */}
+                    <View className={`p-6 rounded-3xl border ${scoreColors.border} ${scoreColors.bg} items-center mb-8 shadow-sm`}>
+                        <Text className={`text-xs font-bold ${scoreColors.text} opacity-70 uppercase tracking-widest mb-5`}>
+                            Scor Siguranta
+                        </Text>
+                        <AnimatedScoreRing score={safetyScore} />
                     </View>
+
+                    {/* Personal Warnings - afisate doar daca userul are profil completat */}
+                    {product.analysis?.personalWarnings?.length > 0 && (
+                        <View className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
+                            <Text className="text-rose-700 font-bold text-sm uppercase tracking-widest mb-3">
+                                ⚠️ Alerte Personale
+                            </Text>
+                            {product.analysis.personalWarnings.map((warning, index) => (
+                                <View key={index} className="flex-row items-start mb-2 last:mb-0">
+                                    <Text className="text-rose-500 mr-2 mt-0.5">•</Text>
+                                    <Text className="text-rose-700 text-sm flex-1 leading-relaxed">
+                                        {warning}
+                                    </Text>
+                                </View>
+                            ))}
+                            {product.analysis.isPersonalized && product.analysis.baseSafetyScore !== product.analysis.safetyScore && (
+                                <Text className="text-rose-400 text-xs mt-3 italic">
+                                    Scorul a fost ajustat de la {product.analysis.baseSafetyScore} la {product.analysis.safetyScore} pe baza profilului tau.
+                                </Text>
+                            )}
+                        </View>
+                    )}
+
+                    {/* General Warnings */}
+                    {product.analysis?.warnings?.length > 0 && (
+                        <View className="bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-6">
+                            <Text className="text-amber-700 font-bold text-sm uppercase tracking-widest mb-3">
+                                Avertismente
+                            </Text>
+                            {product.analysis.warnings.map((warning, index) => (
+                                <View key={index} className="flex-row items-start mb-2 last:mb-0">
+                                    <Text className="text-amber-500 mr-2 mt-0.5">•</Text>
+                                    <Text className="text-amber-700 text-sm flex-1 leading-relaxed">
+                                        {warning}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
 
                     {/* AI Chat Prompt */}
                     <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-md mb-8 items-center">

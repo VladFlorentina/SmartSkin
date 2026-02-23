@@ -25,6 +25,127 @@ function checkCommercialWatchlist(name) {
     return null;
 }
 
+// --- Mapare alergii profil utilizator -> pattern-uri INCI ---
+// Labelurile corespund exact optiunilor din ProfileScreen.js
+const ALLERGY_TO_INGREDIENT_MAP = [
+    {
+        allergyLabel: 'Parfum / Fragrance',
+        patterns: ['PARFUM', 'FRAGRANCE', 'LIMONENE', 'LINALOOL', 'CITRAL', 'GERANIOL',
+            'EUGENOL', 'COUMARIN', 'CINNAMYL ALCOHOL', 'BENZYL ALCOHOL', 'BENZYL SALICYLATE',
+            'CINNAMAL', 'FARNESOL', 'HEXYL CINNAMAL', 'HYDROXYCITRONELLAL', 'ISOEUGENOL',
+            'CITRONELLOL', 'BENZYL BENZOATE', 'BENZYL CINNAMATE', 'AMYL CINNAMAL'],
+    },
+    {
+        allergyLabel: 'Parabeni',
+        patterns: ['PARABEN', 'METHYLPARABEN', 'PROPYLPARABEN', 'BUTYLPARABEN',
+            'ETHYLPARABEN', 'ISOBUTYLPARABEN', 'ISOPROPYLPARABEN'],
+    },
+    {
+        allergyLabel: 'Sulfati (SLS/SLES)',
+        patterns: ['SULFATE', 'SULPHATE'],
+    },
+    {
+        allergyLabel: 'Alcool (Alcohol Denat.)',
+        patterns: ['ALCOHOL DENAT', 'SD ALCOHOL', 'DENATURED ALCOHOL'],
+    },
+    {
+        allergyLabel: 'Coloranti sintetici',
+        patterns: ['CI ', 'COLOR', 'COLOUR'],
+    },
+    {
+        allergyLabel: 'Uleiuri esentiale',
+        patterns: ['ESSENTIAL OIL'],
+    },
+    {
+        allergyLabel: 'Lanolina',
+        patterns: ['LANOLIN', 'LANOLINUM', 'ADEPS LANAE'],
+    },
+    {
+        allergyLabel: 'Formaldehida',
+        patterns: ['FORMALDEHYDE', 'DMDM HYDANTOIN', 'IMIDAZOLIDINYL UREA',
+            'DIAZOLIDINYL UREA', 'SODIUM HYDROXYMETHYLGLYCINATE', 'BRONOPOL', 'QUATERNIUM-15'],
+    },
+    {
+        allergyLabel: 'Nichel',
+        patterns: ['NICKEL'],
+    },
+    {
+        allergyLabel: 'Latex',
+        patterns: ['LATEX', 'HEVEA BRASILIENSIS'],
+    },
+];
+
+/**
+ * Aplica avertismente personalizate bazate pe profilul utilizatorului.
+ * @param {Array} ingredients - Lista de ingrediente analizate
+ * @param {Object|null} userPreferences - { skin_type: string, allergies: string[] }
+ * @returns {{ personalWarnings: string[], scorePenalty: number }}
+ */
+function applyPersonalizedWarnings(ingredients, userPreferences) {
+    if (!userPreferences) return { personalWarnings: [], scorePenalty: 0 };
+
+    const { allergies = [], skin_type } = userPreferences;
+    const personalWarnings = [];
+    let scorePenalty = 0;
+
+    // Warnings pentru alergiile declarate de utilizator
+    for (const allergyLabel of allergies) {
+        const allergyRule = ALLERGY_TO_INGREDIENT_MAP.find(r => r.allergyLabel === allergyLabel);
+        if (!allergyRule) continue;
+
+        const matchedIngredients = ingredients.filter(ing => {
+            const upperName = (ing.name || '').toUpperCase();
+            return allergyRule.patterns.some(pattern => upperName.includes(pattern));
+        });
+
+        if (matchedIngredients.length > 0) {
+            const names = matchedIngredients.map(i => i.name).join(', ');
+            personalWarnings.push(`ALERGIE PERSONALA: Contine ${allergyLabel} (${names})`);
+            scorePenalty += 15;
+        }
+    }
+
+    // Warnings specifice tipului de piele
+    if (skin_type === 'sensitive') {
+        const fragranceAllergens = ingredients.filter(
+            ing => ing.riskLevel === 2 && ing.riskCategory === 'restricted'
+        );
+        if (fragranceAllergens.length > 0) {
+            personalWarnings.push(
+                `TEN SENSIBIL: ${fragranceAllergens.length} alergeni parfumati detectati - poate irita pielea sensibila`
+            );
+            scorePenalty += 8;
+        }
+    }
+
+    if (skin_type === 'dry') {
+        const dryingIngredients = ingredients.filter(ing =>
+            (ing.name || '').toUpperCase().includes('ALCOHOL DENAT')
+        );
+        if (dryingIngredients.length > 0) {
+            personalWarnings.push('TEN USCAT: Contine Alcohol Denat. care poate usca si mai mult pielea');
+            scorePenalty += 5;
+        }
+    }
+
+    if (skin_type === 'oily') {
+        const comedogenicPatterns = [
+            'MINERAL OIL', 'PETROLATUM', 'PARAFFINUM LIQUIDUM',
+            'ISOPROPYL MYRISTATE', 'ISOPROPYL PALMITATE'
+        ];
+        const comedogenic = ingredients.filter(ing =>
+            comedogenicPatterns.some(p => (ing.name || '').toUpperCase().includes(p))
+        );
+        if (comedogenic.length > 0) {
+            personalWarnings.push('TEN GRAS: Contine ingrediente comedogenice care pot infunda porii');
+            scorePenalty += 5;
+        }
+    }
+
+    // Cap: max 40 puncte penalizare personalizata
+    return { personalWarnings, scorePenalty: Math.min(scorePenalty, 40) };
+}
+
 /**
  * Converteste score-ul din baza de date CosIng in risk level (0-5)
  * 
@@ -115,13 +236,20 @@ function buildDescription(dbDescription, dbFunction) {
  * @param {string} ingredientsText - Lista de ingrediente (format text INCI)
  * @returns {Promise<Object>} - Rezultatul analizei
  */
-export async function analyzeToxicity(ingredientsText) {
+/**
+ * @param {string} ingredientsText - Lista de ingrediente (format text INCI)
+ * @param {Object|null} userPreferences - { skin_type: string, allergies: string[] } (optional)
+ * @returns {Promise<Object>} - Rezultatul analizei
+ */
+export async function analyzeToxicity(ingredientsText, userPreferences = null) {
     if (!ingredientsText || ingredientsText.trim() === '') {
         return {
             safetyScore: 0,
             message: 'No ingredients found',
             ingredientsBreakdown: [],
-            warnings: ['Nu s-au gasit ingrediente pentru analiza']
+            warnings: ['Nu s-au gasit ingrediente pentru analiza'],
+            personalWarnings: [],
+            isPersonalized: false
         };
     }
 
@@ -136,7 +264,9 @@ export async function analyzeToxicity(ingredientsText) {
             safetyScore: 0,
             message: 'Invalid ingredients format',
             ingredientsBreakdown: [],
-            warnings: ['Format invalid pentru lista ingrediente']
+            warnings: ['Format invalid pentru lista ingrediente'],
+            personalWarnings: [],
+            isPersonalized: false
         };
     }
 
@@ -256,14 +386,22 @@ export async function analyzeToxicity(ingredientsText) {
     // Generare warning-uri
     const warnings = generateWarnings(ingredientsBreakdown);
 
+    // Personalizare bazata pe profilul utilizatorului
+    const { personalWarnings, scorePenalty } = applyPersonalizedWarnings(ingredientsBreakdown, userPreferences);
+    const baseScore = Math.round(score);
+    const personalizedScore = Math.max(0, baseScore - scorePenalty);
+
     return {
-        safetyScore: Math.round(score),
+        safetyScore: personalizedScore,
+        baseSafetyScore: baseScore,
         totalIngredients: ingredientsBreakdown.length,
         foundInDatabase: foundCount,
         notFoundInDatabase: notFoundCount,
         ingredientsBreakdown,
         warnings,
-        riskSummary: getRiskSummary(score),
+        personalWarnings,
+        isPersonalized: personalWarnings.length > 0,
+        riskSummary: getRiskSummary(personalizedScore),
         _source: 'supabase_cosing'
     };
 }

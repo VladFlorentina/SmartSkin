@@ -1,9 +1,27 @@
 import { supabase } from '../config/supabase.js';
 
 /**
- * Middleware pentru a verifica daca request-ul vine de la un utilizator autentificat in Supabase.
- * Extrage JWT-ul din header-ul Authorization si il valideaza.
+ * Middleware optional: daca exista token valid il decodifica si populeaza req.user.
+ * Daca nu exista token sau e invalid, continua fara a bloca request-ul.
+ * Folosit pentru endpoint-uri publice care ofera functionalitate suplimentara utilizatorilor logati.
  */
+export const optionalAuthMiddleware = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return next(); // Nu e niciun token - continua fara user
+        }
+        const token = authHeader.split(' ')[1];
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (!error && user) {
+            req.user = user; // Injecteaza userul daca token-ul e valid
+        }
+        next();
+    } catch {
+        next(); // Orice eroare -> continua fara user
+    }
+};
+
 export const authMiddleware = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;

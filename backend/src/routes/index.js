@@ -1,9 +1,9 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { supabase } from '../config/supabase.js';
-import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct } from '../controllers/productController.js';
+import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct, searchProducts } from '../controllers/productController.js';
 import { sendMessage } from '../controllers/aiController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -27,45 +27,35 @@ const ocrLimiter = rateLimit({
  * @swagger
  * /products/{barcode}:
  *   get:
- *     summary: Cauta un produs dupa codul de bare
+ *     summary: Returneaza informatii despre produs si analiza de toxicitate
  *     description: |
- *       Cauta produsul in cache-ul comunitar (Supabase), apoi in Open Beauty Facts.
- *       Daca nu gaseste ingrediente, returneaza `needsOcr: true` pentru a solicita OCR.
+ *       Cauta produsul in cache Supabase, apoi in OpenBeautyFacts.
+ *       Daca produsul nu are ingrediente => returneaza needsOcr: true.
+ *       Daca utilizatorul e autentificat, analiza este personalizata pe profilul sau.
  *     tags: [Produse]
+ *     security:
+ *       - BearerAuth: []
  *     parameters:
  *       - in: path
  *         name: barcode
  *         required: true
  *         schema:
  *           type: string
- *           minLength: 8
- *         description: Codul de bare EAN-13/UPC al produsului
- *         example: "5010724527481"
+ *         description: Codul de bare EAN-13 / EAN-8 / UPC al produsului
  *     responses:
  *       200:
- *         description: Produs gasit cu analiza toxicitate SAU flag needsOcr
- *         content:
- *           application/json:
- *             schema:
- *               oneOf:
- *                 - $ref: '#/components/schemas/ProductResponse'
- *                 - $ref: '#/components/schemas/NeedsOcrResponse'
+ *         description: Date produs + analiza toxicitate (sau needsOcr=true)
  *       400:
- *         description: Format cod de bare invalid
+ *         description: Barcode invalid
  *       500:
  *         description: Eroare server
- */
-router.get('/products/:barcode', getProductByBarcode);
-
-/**
- * @swagger
  * /products/manual:
  *   post:
- *     summary: Adauga produs manual cu OCR (fotografie eticheta)
+ *     summary: Adauga manual un produs prin OCR (Gemini Vision)
  *     description: |
- *       Trimite o fotografie (base64) a etichetei cu ingrediente.
- *       Google Gemini AI extrage ingredientele via OCR, apoi se ruleaza analiza de toxicitate.
- *       Produsul este salvat in cache-ul comunitar pentru utilizatorii viitori.
+ *       Primeste o poza cu eticheta de ingrediente, extrage textul cu Gemini OCR,
+ *       analizeaza toxicitatea si salveaza produsul in baza de date.
+ *       Rate limitat la 5 cereri/minut.
  *     tags: [Produse]
  *     requestBody:
  *       required: true
@@ -73,39 +63,35 @@ router.get('/products/:barcode', getProductByBarcode);
  *         application/json:
  *           schema:
  *             type: object
- *             required: [barcode, imageBase64]
+ *             required: [name, base64Image]
  *             properties:
  *               barcode:
  *                 type: string
- *                 example: "5010724527481"
- *               imageBase64:
+ *               name:
  *                 type: string
- *                 description: Imagine fotografie in format base64 (max 10MB)
+ *               brand:
+ *                 type: string
+ *               base64Image:
+ *                 type: string
  *               mimeType:
  *                 type: string
- *                 default: "image/jpeg"
- *                 enum: [image/jpeg, image/png, image/webp]
- *               productName:
- *                 type: string
- *                 example: "Sampon Batiste"
- *               productBrand:
- *                 type: string
- *                 example: "Batiste"
+ *                 default: image/jpeg
  *     responses:
  *       200:
- *         description: Produs adaugat si analizat cu succes
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ProductResponse'
+ *         description: Produs analizat si salvat cu succes
  *       400:
- *         description: Date invalide (imagine prea mare, format gresit, etc.)
- *       429:
- *         description: Rate limit depasit (max 5 OCR/minut)
+ *         description: Input invalid
  *       500:
  *         description: Eroare OCR sau server
  */
-router.post('/products/manual', ocrLimiter, addManualProduct);
+// GET cautare produse dupa nume (Supabase cache + OBF + Makeup API)
+router.get('/products/search', searchProducts);
+
+// GET produs dupa barcode - optional auth pentru personalizare analiza
+router.get('/products/:barcode', optionalAuthMiddleware, getProductByBarcode);
+
+// POST adaugare produs manual + OCR (rate limited, auth obligatoriu pentru a proteja creditele Gemini)
+router.post('/products/manual', ocrLimiter, authMiddleware, addManualProduct);
 
 // ========== History Routes (require auth) ==========
 

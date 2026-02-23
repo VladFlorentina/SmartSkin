@@ -116,7 +116,7 @@ export default function HistoryScreen({ navigation }) {
             ) : (
                 <FlatList
                     data={history}
-                    keyExtractor={item => item.id}
+                    keyExtractor={item => item.id?.toString()}
                     renderItem={renderItem}
                     contentContainerStyle={{ padding: 24, paddingBottom: 40 }}
                     showsVerticalScrollIndicator={false}

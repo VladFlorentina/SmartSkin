@@ -21,10 +21,22 @@ async function getAuthHeaders() {
 
 /**
  * Fetch product details and safety score from the backend
+ * Arunca o eroare cu .isNetworkError=true daca serverul nu raspunde in 12 secunde
  */
 export async function fetchProductDetails(barcode) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
     try {
-        const response = await fetch(`${API_BASE_URL}/products/${barcode}`);
+        // Trimitem si auth headers (optional) - daca userul e logat, backend-ul personalizeaza analiza
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/products/${barcode}`, {
+            method: 'GET',
+            headers,
+            signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             const errorData = await response.json();
@@ -33,6 +45,13 @@ export async function fetchProductDetails(barcode) {
 
         return await response.json();
     } catch (error) {
+        clearTimeout(timeoutId);
+        // Marcam eroarea ca network error daca a expirat timeout-ul sau nu a putut conecta
+        if (error.name === 'AbortError' || error.message === 'Network request failed') {
+            const networkError = new Error('Serverul nu raspunde. Verifica conexiunea la retea.');
+            networkError.isNetworkError = true;
+            throw networkError;
+        }
         console.error('API Error:', error);
         throw error;
     }
@@ -42,24 +61,28 @@ export async function fetchProductDetails(barcode) {
  * Send a message to the AI CosmetiBot
  * @param {string} message - User's chat message
  * @param {object} product - Product context data
+ * @param {Array} history - Conversation history [{sender, text}]
  */
-export async function sendChatMessage(message, product = null) {
+export async function sendChatMessage(message, product = null, history = []) {
     try {
         let contextData = null;
         if (product) {
-            // Trimite un subset relevant din produs catre AI
             contextData = {
                 productName: product.name,
                 brand: product.brand,
                 safetyScore: product.analysis?.safetyScore,
-                // Trimitem lista de ingrediente ca string
                 ingredientsList: product.ingredients_list,
-                // Trimitem si un subset cu ingredientele de risc pentru context imediat
                 riskyIngredients: product.analysis?.ingredientsBreakdown
                     ?.filter(i => i.riskLevel >= 3)
                     .map(i => ({ name: i.name, risk: i.riskLevel }))
             };
         }
+
+        // Convertim istoricul in formatul asteptat de backend: [{role, text}]
+        const formattedHistory = history.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'model',
+            text: msg.text,
+        }));
 
         const headers = await getAuthHeaders();
 
@@ -71,8 +94,9 @@ export async function sendChatMessage(message, product = null) {
             },
             body: JSON.stringify({
                 message: message,
-                productId: product?.id || null, // Optional, pt istoric viitor
-                contextData: contextData
+                productId: product?.id || null,
+                contextData: contextData,
+                history: formattedHistory,
             }),
         });
 
@@ -85,6 +109,30 @@ export async function sendChatMessage(message, product = null) {
         return data.response; // Textul returnat de Gemini
     } catch (error) {
         console.error('AI Chat Error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Search products by name across Supabase cache, Open Beauty Facts and Makeup API
+ * @param {string} query - Search term
+ */
+export async function searchProducts(query) {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(
+            `${API_BASE_URL}/products/search?q=${encodeURIComponent(query)}`,
+            { method: 'GET', headers }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Search failed');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Search API Error:', error);
         throw error;
     }
 }

@@ -9,6 +9,7 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
 /**
  * Perform OCR on a base64 encoded image to strictly extract a comma-separated cosmetic ingredients list.
@@ -18,7 +19,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
  */
 export async function extractIngredientsFromImage(base64Image, mimeType) {
     try {
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
 
         const prompt = `
             You are an expert cosmetic chemistry analyzer AI.

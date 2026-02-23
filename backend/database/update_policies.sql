@@ -11,7 +11,8 @@ CREATE POLICY "Public read access to products"
   USING (true);
 
 -- 2. Permite inserarea de produse noi (INSERT) pentru oricine (anon sau autentificat)
--- Motiv: Backend-ul foloseste anon key, si trebuie sa poata salva produse noi din OpenBeautyFacts
+-- Motiv: Backend-ul foloseste SERVICE_ROLE_KEY care bypass-eaza RLS oricum.
+-- Aceasta policy este pentru compatibilitate si transparenta.
 CREATE POLICY "Enable insert for all users"
   ON products FOR INSERT
   WITH CHECK (true);

@@ -1,145 +1,108 @@
-# SmartSkin Frontend - Documentatie
+﻿# CosmetiSafe - Frontend
 
-Aplicatia mobila React Native (Expo) pentru **CosmetiSafe** - Smart Cosmetic Analyzer.
-
----
-
-## Tehnologii Utilizate
-* **Framework:** React Native (via Expo SDK 52/54)
-* **Limbaj:** JavaScript (ES Modules)
-* **Stilizare:** NativeWind (TailwindCSS) - `className="..."`
-* **Navigare:** React Navigation (Native Stack) - `@react-navigation/native-stack`
-* **Backend:** Node.js + Express (API REST)
-* **Baza de date & Auth:** Supabase (JWT Authentication)
-* **AI:** Google Gemini 2.5 Flash (prin backend)
+Aplicatia mobila React Native (Expo SDK 54) pentru SmartSkin / CosmetiSafe.
 
 ---
 
-## Structura Ecrane
+## Tehnologii folosite
+
+- React Native + Expo SDK 54
+- JavaScript (ES Modules)
+- NativeWind (Tailwind CSS pentru mobil) - stilizare cu `className="..."`
+- React Navigation (Native Stack)
+- expo-camera - scanare barcode si captura pentru OCR
+- react-native-svg + react-native-reanimated - animatia ring-ului de scor
+- Supabase - autentificare si stocare date utilizator
+
+---
+
+## Ecrane
 
 | Ecran | Fisier | Descriere |
 |-------|--------|-----------|
-| Login | `LoginScreen.js` | Autentificare cu email + parola via Supabase |
-| Register | `RegisterScreen.js` | Creare cont nou |
-| Scanner | `ScannerScreen.js` | Camera pentru scanare coduri de bare EAN-13/UPC |
-| Product | `ProductScreen.js` | Afisare scor siguranta, ingrediente colorate, optiune OCR + chat |
-| ManualAdd | `ManualAddScreen.js` | Upload fotografie eticheta pentru OCR (Gemini AI) |
-| Chat | `ChatScreen.js` | Conversatie cu CosmetiBot despre produsul scanat |
-| History | `HistoryScreen.js` | Lista produselor scanate anterior |
-| Profile | `ProfileScreen.js` | Setare tip de piele, alergii, sign out |
+| Login | LoginScreen.js | Autentificare cu email + parola |
+| Register | RegisterScreen.js | Creare cont nou |
+| Scanner | ScannerScreen.js | Camera pentru scanare EAN-13 / UPC |
+| Product | ProductScreen.js | Scor animat, ingrediente, alerte personale, OCR prompt |
+| ManualAdd | ManualAddScreen.js | Fotografie eticheta + trimitere OCR la backend |
+| Chat | ChatScreen.js | Conversatie cu CosmetiBot despre produsul scanat |
+| History | HistoryScreen.js | Lista produse scanate anterior |
+| Profile | ProfileScreen.js | Tip de piele, alergii comune, sign out |
 
 ---
 
-## Logica de Functionare (Flow-uri Principale)
+## Fluxuri principale
 
-### 1. Autentificare
-* **Login:** Email + Parola -> Supabase returneaza un token (JWT).
-* **Register:** Creare cont nou cu validare.
-* **Persistence:** Token-ul este salvat local (AsyncStorage), utilizatorul ramane logat.
-* **Navigare:** `AuthStack` (Login/Register) vs `AppStack` (ecranele app) - switch automat pe baza sesiunii.
+### Autentificare
 
-### 2. Scanarea Produsului (Core Feature)
-1. **Userul scaneaza** un cod de bare cu camera telefonului.
-2. Aplicatia trimite codul catre Backend: `GET /api/products/:barcode`.
-3. **Trei scenarii posibile:**
-   * **Cache hit:** Produsul exista deja in baza de date -> rezultat instant.
-   * **OBF hit:** Open Beauty Facts are ingredientele -> analiza + salvare in cache comunitar.
-   * **OCR needed:** Backend returneaza `needsOcr: true` -> utilizatorul vede ecran "Produs Nou Detectat!" cu buton pentru a fotografia eticheta.
-4. **Afisare:** Scor siguranta (0-100), lista ingrediente colorata, warning-uri.
+Email + parola -> Supabase returneaza JWT. Token-ul e pastrat local (AsyncStorage).
+Navigarea comuta automat intre AuthStack si AppStack in functie de sesiune.
 
-### 3. OCR - Adaugare Manuala cu AI
-* Daca produsul nu e gasit, utilizatorul fotografiaza eticheta cu ingrediente.
-* Imaginea e trimisa la backend (`POST /api/products/manual`) care o proceseaza cu Google Gemini AI.
-* Gemini extrage lista INCI, backend-ul analizeaza toxicitatea si salveaza in cache comunitar.
-* Produsul devine disponibil instant pentru toti utilizatorii viitori.
+### Scanare produs
 
-### 4. Chatbot AI (CosmetiBot)
-* Dupa analiza unui produs, utilizatorul poate intreba CosmetiBot despre ingrediente.
-* Chatbot-ul primeste contextul produsului (ingrediente, riscuri, scor) si raspunde in romana.
-* Protejat cu autentificare JWT.
+1. Userul scaneaza un cod de bare cu CameraView
+2. Aplicatia trimite codul la `GET /api/products/:barcode` (cu headers de autentificare optional)
+3. Trei scenarii:
+   - Cache hit: produsul exista in DB -> rezultat instant
+   - OBF hit: Open Beauty Facts are ingredientele -> analiza + salvare in cache
+   - needsOcr: backend returneaza `needsOcr: true` -> ecran "Produs Nou Detectat!"
+4. Se afiseaza scorul animat (ring cu animatie SVG), ingredientele colorate si eventualele alerte
 
-### 5. Profil Utilizator
-* Selectie tip de piele: Normala / Uscata / Grasa / Mixta / Sensibila.
-* Toggle alergii comune: Parfum, Parabeni, Sulfati, Coloranti, Formaldehida, etc.
-* Datele sunt salvate in `user_metadata` pe Supabase.
-* Sign out cu dialog de confirmare.
+### OCR
 
-### 6. Istoric Personal
-* Lista produselor scanate anterior cu nume, brand, scor si data.
-* Tap pe produs -> redirijare la ecranul de analiza.
+Utilizatorul fotografiaza eticheta. Imaginea e trimisa la `POST /api/products/manual`.
+Backend-ul o proceseaza cu Gemini AI, extrage INCI-ul, analizeaza si salveaza in cache.
+
+### Personalizare
+
+Daca userul e autentificat si are profil completat (tip piele + alergii), backend-ul
+returneaza `personalWarnings[]` si un scor ajustat. Aplicatia afiseaza sectiunea
+"Alerte Personale" (rosu) deasupra avertismentelor generale.
+
+### Offline
+
+Daca serverul nu raspunde in 12 secunde, se afiseaza ecranul "Fara Conexiune" cu
+mesaj explicativ si buton de retry. Nu mai exista crash sau loading infinit.
 
 ---
 
-## Componente Reutilizabile
+## Componente reutilizabile
 
 | Componenta | Descriere |
 |------------|-----------|
-| `Button.js` | Buton stilizat cu NativeWind |
-| `Input.js` | Camp de text cu label si validare |
-| `Layout.js` | Container cu SafeAreaView si padding |
-| `ErrorBoundary.js` | Catch React errors, afiseaza fallback UI in romana |
+| Button.js | Buton stilizat, variante: default si outline |
+| Input.js | Camp text cu label |
+| Layout.js | SafeAreaView cu padding consistent |
+| AnimatedScoreRing.js | Ring SVG animat cu react-native-reanimated, verde/galben/rosu |
+| ErrorBoundary.js | Catch React errors si afiseaza fallback UI |
 
 ---
 
-## Configurare IP Backend
+## Configurare IP backend
 
-IP-ul backend-ului se seteaza in `app.json`:
+In `app.json`, seteaza IP-ul PC-ului tau:
+
 ```json
 {
   "expo": {
     "extra": {
-      "backendIp": "192.168.100.26",
+      "backendIp": "192.168.X.X",
       "backendPort": "3000"
     }
   }
 }
 ```
-Modifica `backendIp` cu IP-ul PC-ului tau (telefonul/emulatorul trebuie sa fie pe aceeasi retea WiFi).
+
+Telefonul si PC-ul trebuie sa fie pe aceeasi retea Wi-Fi.
+IP-ul se gaseste cu `ipconfig` pe Windows (IPv4 -> Wi-Fi).
 
 ---
 
-## Ce am realizat
-
-### Faza 1: Setup (FINALIZAT)
-- [x] Initializare proiect Expo
-- [x] Configurare NativeWind (Tailwind)
-- [x] Configurare Client Supabase
-- [x] Structura directoare (`src/screens`, `src/components`)
-
-### Faza 2: Autentificare & UI (FINALIZAT)
-- [x] Componente reutilizabile: Button, Input, Layout
-- [x] Ecrane LoginScreen si RegisterScreen cu Supabase Auth
-- [x] Interfata in limba romana
-- [x] Logica de sesiune (pastrarea userului logat) in App.js
-
-### Faza 3: Scanare, Produs & OCR AI (FINALIZAT)
-- [x] Scanner camera cu expo-barcode-scanner
-- [x] Ecran ProductScreen cu fetch inteligent (Cache -> OBF -> OCR)
-- [x] Scoring vizual (Verde/Galben/Rosu) bazat pe scorul 0-100
-- [x] Lista ingrediente colorata pe nivel de risc
-- [x] ManualAddScreen cu upload poza + OCR via Gemini AI
-- [x] Flow "Produs Nou Detectat!" cand produsul necesita OCR
-
-### Faza 4: Profil & Istoric (FINALIZAT)
-- [x] HistoryScreen cu lista produselor scanate
-- [x] ProfileScreen cu selectie tip de piele si alergii
-- [x] Salvare preferinte in Supabase user_metadata
-- [x] Sign out cu dialog de confirmare
-
-### Faza 5: AI Chat & Navigare (FINALIZAT)
-- [x] ChatScreen cu conversatie CosmetiBot
-- [x] React Navigation (Native Stack) cu AuthStack + AppStack
-- [x] ErrorBoundary component
-- [x] useFocusEffect pe ScannerScreen (reset camera la revenire)
-
----
-
-## Cum rulezi proiectul
+## Cum rulezi
 
 ```bash
-cd frontend
 npm install
 npx expo start
 ```
-Scaneaza codul QR cu **Expo Go** (Android) sau Camera (iOS).
-Telefonul trebuie sa fie pe aceeasi retea WiFi cu PC-ul.
+
+Scaneaza codul QR cu Expo Go (Android) sau Camera app (iOS).

@@ -1,104 +1,99 @@
-# 🚀 Quick Start Guide - CosmetiSafe
+﻿# Quick Start - CosmetiSafe
 
-## ✅ Status Actual
+Ghid rapid pentru pornirea proiectului.
 
-**Baza de date:** ✅ DONE
-- Tabelul `ingredients` populat cu ~2,500 ingrediente din datele oficiale UE (CosIng)
-- Structură: `name`, `score`, `description`
+## Configurare backend
 
-**Backend:** ✅ DONE  
-- API REST complet implementat
-- Algoritm de scoring toxicitate
-- Integrare cu Open Beauty Facts
+### 1. Seteaza variabilele de mediu
 
----
-
-## 🎯 Pași pentru Pornire Backend
-
-### 1. Completează `.env` cu Supabase Anon Key
-
-**a) Deschide Supabase Dashboard:**
-- URL: https://supabase.com/dashboard/project/pgpuswmlyyvgutoxlk
-
-**b) Obține Anon Key:**
-1. Mergi la **Settings** → **API**
-2. Găsește secțiunea "Project API keys"
-3. Copiază cheia **`anon` / `public`** (nu service_role!)
-
-**c) Editează fișierul `.env`:**
 ```bash
 cd backend
-notepad .env  # sau orice editor
+copy .env.example .env
 ```
 
-Înlocuiește `your_anon_key_here_from_supabase_dashboard` cu cheia ta.
+Editeaza `.env` si completeaza:
 
-### 2. Pornește Backend-ul
+```env
+SUPABASE_URL=url_proiect_tau_supabase
+SUPABASE_ANON_KEY=cheia_anon_de_la_settings_api
+SUPABASE_SERVICE_ROLE_KEY=cheia_service_role
+GEMINI_API_KEY=cheia_google_gemini
+PORT=3000
+NODE_ENV=development
+```
+
+Cheile Supabase se gasesc in **Dashboard -> Settings -> API**.
+Nu folosi service_role in frontend, doar in backend.
+
+### 2. Instaleaza dependentele si porneste serverul
 
 ```bash
-cd backend
+npm install
 npm run dev
 ```
 
-**Output așteptat:**
-```
-🚀 CosmetiSafe Backend running on http://localhost:3000
-📍 API endpoints: http://localhost:3000/api
+Serverul porneste la `http://localhost:3000`.
+Documentatie API disponibila la `http://localhost:3000/api-docs`.
 
-✅ Supabase connection successful
+### 3. Verifica ca functioneaza
 
-✨ Server ready to accept requests!
-```
-
-### 3. Testare API
-
-**a) Health Check (în browser):**
 ```
 http://localhost:3000/api/health
 ```
 
-**b) Test Scanare Produs (Nutella - barcode test):**
-```
-http://localhost:3000/api/products/3017620422003
+Raspuns asteptat: `{ "status": "ok" }`
+
+### 4. Ruleaza testele
+
+```bash
+npm test
 ```
 
-**Răspuns așteptat:**
+45 teste unitare Jest pentru algoritmul de toxicitate.
+
+---
+
+## Configurare frontend
+
+### 1. Seteaza IP-ul backend-ului
+
+Deschide `frontend/app.json` si seteaza IP-ul PC-ului tau (nu localhost - telefonul e pe alta masina):
+
 ```json
 {
-  "barcode": "3017620422003",
-  "name": "Nutella",
-  "brand": "Ferrero",
-  "ingredientsText": "Sugar, Palm Oil, Hazelnuts...",
-  "analysis": {
-    "safetyScore": 65,
-    "totalIngredients": 8,
-    "warnings": ["⚠️ 2 ingrediente restricționate în UE"],
-    "riskSummary": "Risc scăzut - acceptabil pentru majoritatea utilizatorilor"
-  },
-  "source": "live"
+  "expo": {
+    "extra": {
+      "backendIp": "192.168.X.X",
+      "backendPort": "3000"
+    }
+  }
 }
 ```
 
----
+Gasesti IP-ul cu `ipconfig` pe Windows (IPv4 de la Wi-Fi).
+Telefonul si PC-ul trebuie sa fie pe aceeasi retea Wi-Fi.
 
-## 📝 Next Steps
+### 2. Instaleaza si porneste
 
-După ce backend-ul funcționează:
+```bash
+cd frontend
+npm install
+npx expo start
+```
 
-1. **Rulează script SQL pentru tabele suplimentare:**
-   - În Supabase → SQL Editor
-   - Copiază din `backend/database/schema.sql`
-   - Creează tabelele: `products`, `scanned_products`, `ai_conversations`
-
-2. **Frontend React Native** (Faza 3):
-   - Setup Expo
-   - Barcode scanner
-   - UI pentru afișare produse
-
-3. **AI Chatbot** (Faza 5):
-   - Obține Gemini API key
-   - Completează în `.env`
+Scaneaza codul QR cu Expo Go (Android) sau Camera app (iOS).
 
 ---
 
-**💡 Ai nevoie de ajutor?** Rulează server-ul și testează cu barcode-ul de test mai sus!
+## Probleme frecvente
+
+**`EADDRINUSE` la pornirea serverului:**
+Un proces Node.js a ramas in background. Ruleaza `taskkill /F /IM node.exe` si reincearca.
+
+**`Network Request Failed` in aplicatie:**
+IP-ul din `app.json` nu mai e valid (DHCP). Ruleaza `ipconfig`, actualizeaza `backendIp` si
+restartati Expo cu `r` in terminal.
+
+**Serverul nu raspunde dupa 12 secunde:**
+Aplicatia afiseaza ecranul "Fara Conexiune" cu buton de retry. Verifica ca serverul ruleaza
+si ca e pe aceeasi retea.

@@ -17,11 +17,11 @@ export default function Input({
                 </Text>
             )}
             <TextInput
-                className={`w-full bg-white border-[1px] rounded-2xl p-4 text-gray-800 transition-all ${error ? 'border-red-400 bg-red-50' : 'border-brand-200 focus:border-brand-400 focus:bg-brand-50'}`}
+                className={`w-full bg-white border rounded-2xl p-4 text-gray-800 ${error ? 'border-red-400 bg-red-50' : 'border-brand-200'}`}
                 value={value}
                 onChangeText={onChangeText}
                 placeholder={placeholder}
-                placeholderTextColor="#FDA4AF"
+                placeholderTextColor="#E89BBF"
                 secureTextEntry={secureTextEntry}
                 autoCapitalize="none"
                 keyboardType={keyboardType}

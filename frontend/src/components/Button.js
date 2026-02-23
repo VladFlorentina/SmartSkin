@@ -1,6 +1,6 @@
 import { TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 
-export default function Button({ onPress, title, loading = false, variant = 'primary' }) {
+export default function Button({ onPress, title, loading = false, variant = 'primary', disabled = false, className = '' }) {
     // Stiluri de baza: rotunjit mai mult (rounded-2xl) pentru aspect "soft"
     const baseStyle = "p-4 rounded-2xl items-center justify-center shadow-sm active:opacity-80";
 
@@ -18,14 +18,16 @@ export default function Button({ onPress, title, loading = false, variant = 'pri
         ghost: "text-brand-500 font-medium text-base"
     };
 
+    const isDisabled = loading || disabled;
+
     return (
         <TouchableOpacity
             onPress={onPress}
-            className={`${baseStyle} ${variants[variant] || variants.primary} ${loading ? 'opacity-70' : ''}`}
-            disabled={loading}
+            className={`${baseStyle} ${variants[variant] || variants.primary} ${isDisabled ? 'opacity-50' : ''} ${className}`}
+            disabled={isDisabled}
         >
             {loading ? (
-                <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? '#FB7185' : '#FFFFFF'} />
+                <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? '#D97AAA' : '#FFFFFF'} />
             ) : (
                 <Text className={textStyles[variant] || textStyles.primary}>
                     {title}

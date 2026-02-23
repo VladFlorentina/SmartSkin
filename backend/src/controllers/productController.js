@@ -1,7 +1,97 @@
 import { supabase } from '../config/supabase.js';
-import { fetchProductByBarcode, fetchProductMetadata } from '../services/openBeautyFacts.js';
+import { fetchProductMetadata, searchProductsByName } from '../services/openBeautyFacts.js';
 import { analyzeToxicity } from '../services/toxicityAnalyzer.js';
 import { extractIngredientsFromImage } from '../services/geminiService.js';
+import { searchMakeupByName } from '../services/makeupApiService.js';
+
+/**
+ * GET /api/products/search?q=text
+ * Cauta produse dupa nume in:
+ * 1. Cache Supabase (produse deja analizate de comunitate)
+ * 2. Open Beauty Facts API (skincare, creme, sampoane)
+ * 3. Makeup API (produse de machiaj)
+ */
+export async function searchProducts(req, res) {
+    try {
+        const { q } = req.query;
+
+        if (!q || q.trim().length < 2) {
+            return res.status(400).json({ error: 'Termenul de cautare trebuie sa aiba minim 2 caractere' });
+        }
+
+        const searchText = q.trim();
+
+        // Rulam cautarile in paralel pentru viteza maxima
+        const [supabaseResults, obfResults, makeupResults] = await Promise.allSettled([
+            // 1. Cache Supabase - produse deja analizate
+            supabase
+                .from('products')
+                .select('barcode, name, brand, image_url')
+                .ilike('name', `%${searchText}%`)
+                .limit(5),
+
+            // 2. Open Beauty Facts - skincare
+            searchProductsByName(searchText, 5),
+
+            // 3. Makeup API - machiaj
+            searchMakeupByName(searchText, 5),
+        ]);
+
+        const combined = [];
+        const seenBarcodes = new Set();
+
+        // 1. Adauga rezultate Supabase (au prioritate - deja analizate)
+        if (supabaseResults.status === 'fulfilled' && supabaseResults.value.data) {
+            for (const p of supabaseResults.value.data) {
+                if (p.barcode) seenBarcodes.add(p.barcode);
+                combined.push({
+                    name: p.name,
+                    brand: p.brand,
+                    barcode: p.barcode,
+                    imageUrl: p.image_url,
+                    safetyScore: null, // Nu recalculam scorul la search pentru viteza
+                    source: 'cache',
+                });
+            }
+        }
+
+        // 2. Adauga rezultate OBF (fara duplicate dupa barcode)
+        if (obfResults.status === 'fulfilled') {
+            for (const p of obfResults.value) {
+                if (p.barcode && seenBarcodes.has(p.barcode)) continue;
+                if (p.barcode) seenBarcodes.add(p.barcode);
+                combined.push(p);
+            }
+        }
+
+        // 3. Adauga rezultate Makeup API
+        if (makeupResults.status === 'fulfilled') {
+            for (const p of makeupResults.value) {
+                combined.push(p);
+            }
+        }
+
+        console.log(`[SEARCH] "${searchText}" -> ${combined.length} rezultate (cache: ${supabaseResults.value?.data?.length || 0}, OBF: ${obfResults.value?.length || 0}, makeup: ${makeupResults.value?.length || 0})`);
+
+        return res.json(combined);
+
+    } catch (error) {
+        console.error('Error in searchProducts:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}
+
+/**
+ * Extrage preferintele utilizatorului din user_metadata Supabase.
+ * Returneaza null daca userul nu e autentificat sau nu are preferinte setate.
+ */
+function getUserPreferences(req) {
+    const metadata = req.user?.user_metadata;
+    if (!metadata) return null;
+    const { skin_type, allergies } = metadata;
+    if (!skin_type && (!allergies || allergies.length === 0)) return null;
+    return { skin_type: skin_type || null, allergies: allergies || [] };
+}
 
 /**
  * GET /api/products/:barcode
@@ -31,8 +121,10 @@ export async function getProductByBarcode(req, res) {
             } else {
                 console.log(`[CACHE] Product found in cache: ${barcode}`);
 
-                // Analizeaza toxicitatea
-                const analysis = await analyzeToxicity(cachedProduct.ingredients_list);
+                // Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
+                const userPrefs = getUserPreferences(req);
+                const analysis = await analyzeToxicity(cachedProduct.ingredients_list, userPrefs);
+                if (userPrefs) console.log(`[PERSONALIZED] Analysis personalized for skin_type=${userPrefs.skin_type}, allergies=${userPrefs.allergies.length}`);
 
                 return res.json({
                     ...cachedProduct,
@@ -49,7 +141,8 @@ export async function getProductByBarcode(req, res) {
         // 3. Daca OBF a gasit ingrediente -> analizeaza, salveaza in cache, returneaza
         if (obfData?.ingredientsText) {
             console.log(`[OBF] Ingrediente gasite pentru ${barcode} - analizam...`);
-            const analysis = await analyzeToxicity(obfData.ingredientsText);
+            const userPrefs = getUserPreferences(req);
+            const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs);
 
             // Salveaza in cache Supabase
             const { data: savedProduct, error: saveError } = await supabase
@@ -236,8 +329,9 @@ export async function addManualProduct(req, res) {
 
         console.log(`[OCR SUCCESS] Ingrediente extrase: ${ingredientsText.substring(0, 100)}...`);
 
-        // 2. Analizeaza toxicitatea (Regulile UE)
-        const analysis = await analyzeToxicity(ingredientsText);
+        // 2. Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
+        const userPrefs = getUserPreferences(req);
+        const analysis = await analyzeToxicity(ingredientsText, userPrefs);
 
         // 3. Salveaza produsul public in Supabase pentru toti utilizatorii
         const productDataToSave = {

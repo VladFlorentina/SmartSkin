@@ -1,56 +1,107 @@
-# SmartSkin
-Smart Cosmetic Analyzer - Aplicatie mobila pentru analiza toxicitatii produselor (React Native & AI)
+﻿# CosmetiSafe - Smart Cosmetic Analyzer
 
-# CosmetiSafe - Smart Cosmetic Analyzer
+Aplicatie mobila pentru analiza toxicitatii produselor cosmetice, construita cu React Native si AI.
+Proiect de licenta - 2025/2026.
 
-> **Aplicatie mobila pentru analiza toxicitatii produselor cosmetice utilizand Inteligenta Artificiala.**
-> *Proiect de Licenta - 2025*
+## Despre proiect
 
-## Descriere Generala
-**CosmetiSafe** este o solutie software cross-platform (Android & iOS) destinata consumatorilor constienti de sanatatea lor. Aplicatia permite scanarea codurilor de bare de pe produsele cosmetice si de ingrijire personala pentru a decodifica lista de ingrediente (INCI).
+CosmetiSafe permite scanarea codului de bare al unui produs cosmetic pentru a afla rapid daca
+ingredientele sunt sigure sau nu. Aplicatia interpreteaza lista INCI folosind baza de date CosIng
+a Comisiei Europene si un algoritm propriu de calcul al riscului chimic.
 
-Spre deosebire de alte aplicatii, CosmetiSafe nu doar listeaza ingredientele, ci le interpreteaza contextul utilizand algoritmi de calcul al riscului chimic si modele de Inteligenta Artificiala Generativa (LLM) pentru a oferi explicatii clare si recomandari personalizate.
+Daca produsul nu se gaseste in baze de date, utilizatorul poate fotografia eticheta din aplicatie.
+Modelul AI (Google Gemini) extrage automat lista INCI si o analizeaza.
 
-## Functionalitati Cheie
-* **Scanare Instantanee:** Recunoasterea codurilor de bare EAN-13/UPC utilizand camera telefonului.
-* **Analiza INCI:** Descompunerea listei de ingrediente si identificarea substantelor cu risc (alergeni, disruptori endocrini, cancerigeni).
-* **Scoring Algoritmic:** Calcularea unui scor de siguranta (0-100) bazat pe toxicitatea cumulativa a ingredientelor.
-* **AI Assistant (CosmetiBot):** Chatbot integrat care raspunde la intrebari precum *"De ce acest produs nu este recomandat pentru tenul sensibil?"*.
-* **Istoric Personal:** Salvarea produselor scanate pentru consultare ulterioara.
+## Functionalitati
 
-## Stack Tehnologic (Arhitectura)
+- Scanare coduri de bare EAN-13 / UPC cu camera telefonului
+- OCR pe eticheta produsului via Google Gemini 2.5 Flash
+- Algoritm de scoring (0-100) bazat pe CosIng (~30.000 ingrediente INCI)
+- Scor animat cu ring SVG (verde / galben / rosu)
+- Scor personalizat in functie de tipul de piele si alergiile declarate
+- Chatbot integrat (CosmetiBot) pentru intrebari despre ingrediente
+- Cache comunitar - un produs analizat odata devine disponibil instant pentru toti
+- Istoric personal de scanari
+- Ecran de eroare dedicat la lipsa conexiunii cu serverul (timeout 12s + retry)
 
-### Client Side (Mobile App)
-* **Framework:** React Native (via Expo SDK 52)
-* **Limbaj:** TypeScript
-* **UI/UX:** NativeWind (Tailwind CSS pentru mobil)
-* **Navigare:** Expo Router
+## Stack tehnologic
 
-### Backend & Data
-* **Database:** Supabase (PostgreSQL Cloud) - stocare utilizatori si dictionar de toxicitate.
-* **Auth:** Supabase Authentication.
-* **External API:** Open Beauty Facts API (sursa datelor despre produse).
+### Frontend
+- React Native + Expo SDK 54
+- JavaScript (ES Modules)
+- NativeWind (Tailwind CSS pentru mobil)
+- React Navigation (Native Stack)
+- expo-camera (scanare barcode EAN-13/UPC si captura OCR)
+- react-native-svg + react-native-reanimated (animatia ring-ului de scor)
 
-### Inteligenta Artificiala
-* **Engine:** Google Gemini API / Groq (Llama 3).
-* **Rol:** Generare explicatii in limbaj natural si analiza contextuala a ingredientelor.
+### Backend
+- Node.js + Express.js
+- Supabase (PostgreSQL cloud) - autentificare, baza de date, RLS
+- Google Gemini 2.5 Flash - OCR si chatbot
+- Open Beauty Facts API - metadata produse (nume, brand, imagine)
+- express-rate-limit - protectie endpoints
+- Jest - 45 teste unitare pentru algoritmul de toxicitate
+- Swagger UI la `/api-docs`
 
-## Fluxul de Date (High Level)
-1.  **User** scaneaza produsul -> App extrage codul de bare.
-2.  **App** interogheaza *Open Beauty Facts* pentru lista de ingrediente.
-3.  **App** compara ingredientele cu baza de date *Supabase* pentru a obtine scorurile de risc.
-4.  **Algoritmul** calculeaza nota finala.
-5.  (Optional) **AI-ul** genereaza un rezumat explicativ pentru utilizator.
+### Baza de date ingrediente
+- Sursa: CosIng - Cosmetic Ingredients Database, Comisia Europeana
+- ~30.000 ingrediente INCI cu toxicitate, functie si restrictii UE
+- Acoperire: Anexa II (interzise), III (restrictionate), IV (coloranti), V (conservanti), VI (filtre UV)
 
-## Status Proiect
-**In Dezvoltare (Faza de Testare & Debugging AI).**
+## Structura proiectului
 
-*Ce am finalizat recent:*
-- **Modulul OCR (Adaugare Manuala):** Utilizatorii au acum capacitatea de a poza eticheta de ingrediente cu camera, iar modelul generativ Google Gemini (`gemini-2.5-flash`) descompune textul chimic intr-un format analizabil. Solutia repara deficientele bazei de date globale "Open Beauty Facts" unde mii de produse sunt inregistrate fara liste de ingrediente.
-- **Scoring Algoritmic (Stil INCI Beauty):** Am facut tranzitia de la un scor liniar (medie matematica permisiva) la un sistem guvernat de **penalizare prin plafon maxim (Cap Effect)**. Un singur ingredient interzis plafoneaza intregul produs la scor sub 45/100, indiferent de cantitatea de elemente sigure "filler" (apa, glicerina).
-- **Tratarea Problemelor OBF (Ghost Products):** Sistemul a fost securizat arhitectural prin tehnici `upsert` si rutare asertiva 404 (vezi arhiva problemelor).
+```
+SmartSkin/
+  backend/
+    src/
+      app.js              - server principal si middleware
+      config/             - Supabase, Swagger
+      controllers/        - logica endpoints (product, AI)
+      middleware/         - autentificare JWT (required + optional)
+      routes/             - rute API cu documentatie Swagger
+      services/           - toxicityAnalyzer, geminiService, openBeautyFacts
+    __tests__/            - teste Jest (45 teste unitare)
+  frontend/
+    src/
+      screens/            - Scanner, Product, Chat, History, Profile, ManualAdd etc.
+      components/         - Button, Input, Layout, AnimatedScoreRing, ErrorBoundary
+      lib/                - API client, Supabase config
+      navigation/         - stive de navigare (AuthStack + AppStack)
+  date_curatate_UE/       - CSV-uri cu ingredientele din Anexele II-VI UE
+```
 
-> **Atentie:** Un jurnal tehnic aprofundat al tuturor erorilor de backend, networking, frontend status si limitari API (inclusiv detalii despre bug-ul curent al Scorului Generat 0) poate fi consultat in noul document **[PROBLEME.md](./PROBLEME.md)**.
+## Rulare locala
+
+### Cerinte
+- Node.js >= 18
+- Expo Go pe telefon (sau emulator Android/iOS)
+- Cont Supabase
+- Google Gemini API Key
+
+### Backend
+```bash
+cd backend
+cp .env.example .env    # completeaza cu cheile tale
+npm install
+npm run dev             # server pornit la http://localhost:3000
+```
+
+### Frontend
+```bash
+cd frontend
+npm install
+npx expo start
+```
+
+Seteaza IP-ul PC-ului in `frontend/app.json` -> `extra.backendIp` (telefonul si PC-ul trebuie
+pe aceeasi retea Wi-Fi).
+
+### Teste
+```bash
+cd backend
+npm test    # 45 teste unitare Jest
+```
 
 ---
-*Developed by Vlad & Florentina*
+
+Proiect de licenta - Florentina

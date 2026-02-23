@@ -24,8 +24,9 @@ export default function ChatScreen({ navigation, route }) {
         setIsLoading(true);
 
         try {
-            // Trimitem mesajul catre backend cu tot cu contextul produsului
-            const answer = await sendChatMessage(userMsg.text, product);
+            // Trimitem mesajul + istoricul conversatiei (fara primul mesaj de greeting al AI-ului)
+            const conversationHistory = messages.slice(1); // sarim mesajul initial de bun venit
+            const answer = await sendChatMessage(userMsg.text, product, conversationHistory);
 
             const aiMsg = { id: (Date.now() + 1).toString(), text: answer, sender: 'ai' };
             setMessages(prev => [...prev, aiMsg]);

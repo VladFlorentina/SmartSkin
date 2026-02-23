@@ -10,7 +10,9 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
+import HomeScreen from './src/screens/HomeScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
+import SearchScreen from './src/screens/SearchScreen';
 import ProductScreen from './src/screens/ProductScreen';
 import ManualAddScreen from './src/screens/ManualAddScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
@@ -39,7 +41,9 @@ function AuthNavigator() {
 function AppNavigator() {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
+      <AppStack.Screen name="Home" component={HomeScreen} />
       <AppStack.Screen name="Scanner" component={ScannerScreen} />
+      <AppStack.Screen name="Search" component={SearchScreen} />
       <AppStack.Screen name="Product" component={ProductScreen} />
       <AppStack.Screen name="ManualAdd" component={ManualAddScreen} />
       <AppStack.Screen name="History" component={HistoryScreen} />
