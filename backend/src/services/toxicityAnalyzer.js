@@ -1,6 +1,13 @@
 import { supabase } from '../config/supabase.js';
 import { resolveUnknownIngredients } from './geminiService.js';
 
+// Cache in-memory pentru ingrediente deja procesate de AI in aceasta sesiune.
+// Cheie: nume original uppercase. Valoare: 'resolved' | 'not_found'.
+// Scopul: evita apeluri AI repetate pentru acelasi ingredient necunoscut.
+// La repornirea serverului se goleste automat (ingredientele inserate in DB
+// vor fi gasite direct la urmatoarea analiza, fara AI).
+const aiResolvedCache = new Set();
+
 // --- Lista de Ingrediente Controversate ---
 // Ingrediente LEGALE in UE (scor CosIng = 10) dar controversate din punct de vedere
 // stiintific / de mediu / dermatologic. Se aplica CA OVERLAY si pentru ingrediente gasite in DB.
@@ -525,79 +532,116 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
         }
 
         if (unknownOriginalNames.length > 0) {
-            console.log(`[AI RESOLVE] ${unknownOriginalNames.length} ingrediente necunoscute trimise la AI:`, unknownOriginalNames);
-
-            const aiResults = await resolveUnknownIngredients(unknownOriginalNames);
-
-            const synonymNamesToQuery = [];
-            const synonymMap = new Map(); // inci uppercase -> originalName
-            const trulyNewIngredients = [];
-
-            for (const result of aiResults) {
-                if (!result || !result.input) continue;
-
-                if (result.is_synonym && result.inci_name) {
-                    // Sinonim -> vom re-interoga DB dupa INCI name
-                    const inciUpper = result.inci_name.toUpperCase().trim();
-                    synonymNamesToQuery.push(inciUpper);
-                    synonymMap.set(inciUpper, result.input);
-                } else if (!result.is_synonym) {
-                    // Ingredient cu adevarat necunoscut -> vom insera in DB
-                    trulyNewIngredients.push(result);
-                }
+            // Filtreaza: exclude ingredientele deja procesate de AI in aceasta sesiune
+            const toAsk = unknownOriginalNames.filter(n => !aiResolvedCache.has(n.toUpperCase()));
+            const cachedSkipped = unknownOriginalNames.length - toAsk.length;
+            if (cachedSkipped > 0) {
+                console.log(`[AI RESOLVE] ${cachedSkipped} ingrediente deja procesate de AI (skip din cache)`);
             }
 
-            // Re-interogheaza DB pentru sinonimele rezolvate
-            if (synonymNamesToQuery.length > 0) {
-                const { data: synonymData } = await supabase
-                    .from('ingredients')
-                    .select('inci_name, score, description, "Restriction", "Function"')
-                    .in('inci_name', synonymNamesToQuery);
+            if (toAsk.length > 0) {
+                console.log(`[AI RESOLVE] ${toAsk.length} ingrediente necunoscute trimise la AI:`, toAsk);
 
-                if (synonymData) {
-                    for (const ing of synonymData) {
-                        const inciUpper = ing.inci_name.toUpperCase();
-                        // Adauga in dbMap atat dupa INCI cat si dupa numele original
-                        dbMap.set(inciUpper, ing);
-                        const originalName = synonymMap.get(inciUpper);
-                        if (originalName) {
-                            dbMap.set(originalName.toUpperCase(), ing);
-                            console.log(`[AI RESOLVE] Sinonim rezolvat: "${originalName}" -> ${ing.inci_name}`);
+                const aiResults = await resolveUnknownIngredients(toAsk);
+
+                // Marcam toate ca procesate in cache (indiferent de rezultat)
+                for (const name of toAsk) {
+                    aiResolvedCache.add(name.toUpperCase());
+                }
+
+                const synonymNamesToQuery = [];
+                const synonymMap = new Map(); // inci uppercase -> originalName
+                const trulyNewIngredients = [];
+
+                for (const result of aiResults) {
+                    if (!result || !result.input) continue;
+
+                    if (result.is_synonym && result.inci_name) {
+                        // Sinonim -> vom re-interoga DB dupa INCI name
+                        const inciUpper = result.inci_name.toUpperCase().trim();
+                        synonymNamesToQuery.push(inciUpper);
+                        synonymMap.set(inciUpper, result.input);
+                    } else if (!result.is_synonym) {
+                        // Ingredient cu adevarat necunoscut -> vom insera in DB
+                        trulyNewIngredients.push(result);
+                    }
+                }
+
+                // Re-interogheaza DB pentru sinonimele rezolvate
+                if (synonymNamesToQuery.length > 0) {
+                    const { data: synonymData } = await supabase
+                        .from('ingredients')
+                        .select('inci_name, score, description, "Restriction", "Function"')
+                        .in('inci_name', synonymNamesToQuery);
+
+                    if (synonymData) {
+                        const aliasesToInsert = [];
+
+                        for (const ing of synonymData) {
+                            const inciUpper = ing.inci_name.toUpperCase();
+                            dbMap.set(inciUpper, ing);
+                            const originalName = synonymMap.get(inciUpper);
+                            if (originalName) {
+                                dbMap.set(originalName.toUpperCase(), ing);
+                                console.log(`[AI RESOLVE] Sinonim rezolvat: "${originalName}" -> ${ing.inci_name}`);
+
+                                // Pregatim aliasul pentru persistare in DB (evita AI la repornirea serverului)
+                                if (originalName.toUpperCase().trim() !== inciUpper) {
+                                    aliasesToInsert.push({
+                                        inci_name: originalName.toUpperCase().trim(),
+                                        score: ing.score,
+                                        description: `[AI-ALIAS] Sinonim pentru ${ing.inci_name}. ${ing.description || ''}`.slice(0, 250),
+                                        Restriction: ing.Restriction,
+                                        Function: ing.Function
+                                    });
+                                }
+                            }
+                        }
+
+                        // Persistam aliasele in DB - data viitoare sunt gasite direct, fara AI
+                        if (aliasesToInsert.length > 0) {
+                            const { error: aliasError } = await supabase
+                                .from('ingredients')
+                                .upsert(aliasesToInsert, { onConflict: 'inci_name', ignoreDuplicates: true });
+                            if (aliasError) {
+                                console.error('[AI RESOLVE] Eroare la persistarea aliasurilor:', aliasError.message);
+                            } else {
+                                console.log(`[AI RESOLVE] ${aliasesToInsert.length} aliasuri persistate in DB (nu vor mai necesita AI dupa repornire)`);
+                            }
                         }
                     }
                 }
-            }
 
-            // Insereaza ingrediente cu adevarat noi in DB (evaluare AI)
-            if (trulyNewIngredients.length > 0) {
-                const toInsert = trulyNewIngredients
-                    .filter(r => r.inci_name !== null || r.input)
-                    .map(r => ({
-                        inci_name: (r.inci_name || r.input).toUpperCase().trim(),
-                        score: (typeof r.score === 'number' && r.score >= -10 && r.score <= 10) ? r.score : 0,
-                        description: `[AI] ${r.description || 'Ingredient evaluat de AI - nu exista in CosIng UE'}`,
-                        Restriction: null,
-                        Function: r.function || 'UNKNOWN'
-                    }));
+                // Insereaza ingrediente cu adevarat noi in DB (evaluare AI)
+                if (trulyNewIngredients.length > 0) {
+                    const toInsert = trulyNewIngredients
+                        .filter(r => r.inci_name !== null || r.input)
+                        .map(r => ({
+                            inci_name: (r.inci_name || r.input).toUpperCase().trim(),
+                            score: (typeof r.score === 'number' && r.score >= -10 && r.score <= 10) ? r.score : 0,
+                            description: `[AI] ${r.description || 'Ingredient evaluat de AI - nu exista in CosIng UE'}`,
+                            Restriction: null,
+                            Function: r.function || 'UNKNOWN'
+                        }));
 
-                const { data: insertedData, error: insertError } = await supabase
-                    .from('ingredients')
-                    .upsert(toInsert, { onConflict: 'inci_name', ignoreDuplicates: true })
-                    .select('inci_name, score, description, "Restriction", "Function"');
+                    const { data: insertedData, error: insertError } = await supabase
+                        .from('ingredients')
+                        .upsert(toInsert, { onConflict: 'inci_name', ignoreDuplicates: true })
+                        .select('inci_name, score, description, "Restriction", "Function"');
 
-                if (insertError) {
-                    console.error('[AI RESOLVE] Eroare la insertie:', insertError.message);
-                } else if (insertedData) {
-                    for (const ing of insertedData) {
-                        dbMap.set(ing.inci_name.toUpperCase(), ing);
-                        // Adauga si dupa numele original scris pe produs
-                        const originalResult = trulyNewIngredients.find(
-                            r => (r.inci_name || r.input).toUpperCase().trim() === ing.inci_name.toUpperCase()
-                        );
-                        if (originalResult) {
-                            dbMap.set(originalResult.input.toUpperCase(), ing);
+                    if (insertError) {
+                        console.error('[AI RESOLVE] Eroare la insertie:', insertError.message);
+                    } else if (insertedData) {
+                        for (const ing of insertedData) {
+                            dbMap.set(ing.inci_name.toUpperCase(), ing);
+                            const originalResult = trulyNewIngredients.find(
+                                r => (r.inci_name || r.input).toUpperCase().trim() === ing.inci_name.toUpperCase()
+                            );
+                            if (originalResult) {
+                                dbMap.set(originalResult.input.toUpperCase(), ing);
+                            }
+                            console.log(`[AI RESOLVE] Ingredient nou inserat in DB: ${ing.inci_name} (score: ${ing.score})`);
                         }
-                        console.log(`[AI RESOLVE] Ingredient nou inserat in DB: ${ing.inci_name} (score: ${ing.score})`);
                     }
                 }
             }

@@ -9,7 +9,45 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
+// Model primar: gemini-2.5-flash (20 cereri/zi)
+// Model de rezerva: gemini-2.0-flash (20 cereri/zi) - folosit automat la atingerea limitei
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
+
+/**
+ * Detecteaza erori de limita de cereri (HTTP 429 / RESOURCE_EXHAUSTED)
+ */
+function isRateLimitError(error) {
+    const msg = (error?.message || '').toLowerCase();
+    return (
+        msg.includes('429') ||
+        msg.includes('quota') ||
+        msg.includes('resource_exhausted') ||
+        msg.includes('rate limit') ||
+        msg.includes('ratelimit')
+    );
+}
+
+/**
+ * Trimite un prompt la Gemini, cu fallback automat pe modelul secundar daca primarul e limitat.
+ * @param {string | Array} contentParts - Promptul (string simplu sau array cu imagini)
+ * @returns {Promise<string>} - Textul raspunsului
+ */
+async function generateWithFallback(contentParts) {
+    try {
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+        const result = await model.generateContent(contentParts);
+        return result.response.text().trim();
+    } catch (primaryError) {
+        if (isRateLimitError(primaryError)) {
+            console.warn(`[GEMINI] ${GEMINI_MODEL} a atins limita zilnica. Folosesc modelul de rezerva ${GEMINI_FALLBACK_MODEL}...`);
+            const fallbackModel = genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
+            const result = await fallbackModel.generateContent(contentParts);
+            return result.response.text().trim();
+        }
+        throw primaryError;
+    }
+}
 
 /**
  * Perform OCR on a base64 encoded image to strictly extract a comma-separated cosmetic ingredients list.
@@ -19,8 +57,6 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
  */
 export async function extractIngredientsFromImage(base64Image, mimeType) {
     try {
-        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-
         const prompt = `
             You are an expert cosmetic chemistry analyzer AI.
             The user has uploaded a photo of the back of a cosmetic product, showing the ingredients label.
@@ -45,9 +81,7 @@ export async function extractIngredientsFromImage(base64Image, mimeType) {
             }
         ];
 
-        const result = await model.generateContent([prompt, ...imageParts]);
-        const response = await result.response;
-        const text = response.text().trim();
+        const text = await generateWithFallback([prompt, ...imageParts]);
 
         if (text === "NO_INGREDIENTS_FOUND") {
             throw new Error('Nu am putut detecta nicio lista de ingrediente in poza trimisa.');
@@ -80,8 +114,6 @@ export async function resolveUnknownIngredients(unknownNames) {
     if (!unknownNames || unknownNames.length === 0) return [];
 
     try {
-        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-
         const prompt = `You are an expert cosmetic chemistry AI. I will give you a list of cosmetic ingredient names that were NOT found in the EU CosIng database.
 
 For EACH ingredient, you must determine one of two cases:
@@ -121,8 +153,7 @@ Required output format (array with exactly ${unknownNames.length} objects, same 
   }
 ]`;
 
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text().trim();
+        const responseText = await generateWithFallback(prompt);
 
         // Curata markdown code blocks daca Gemini le adauga
         const jsonText = responseText
