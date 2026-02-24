@@ -4,42 +4,36 @@ import { supabase } from '../lib/supabase';
 import Layout from '../components/Layout';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import { useApp } from '../lib/AppContext';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const { t, colors } = useApp();
 
     async function handleLogin() {
         setLoading(true);
-
         const cleanEmail = email.trim();
-
-        const { error } = await supabase.auth.signInWithPassword({
-            email: cleanEmail,
-            password,
-        });
-
-        if (error) {
-            Alert.alert('Eroare de autentificare', error.message);
-        }
+        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+        if (error) { Alert.alert(t('loginErr'), error.message); }
         setLoading(false);
     }
 
     return (
         <Layout className="justify-center">
-            <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-lg mb-6">
+            <View className="p-6 rounded-3xl shadow-lg mb-6" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
                 <View className="mb-8 items-center">
-                    <Text className="text-3xl font-bold text-brand-900 mb-2">
-                        Bine ai revenit!
+                    <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
+                        {t('loginTitle')}
                     </Text>
-                    <Text className="text-brand-400 text-base font-medium">
-                        Conecteaza-te la contul tau SmartSkin
+                    <Text className="text-base font-medium" style={{ color: colors.textSub }}>
+                        {t('loginSub')}
                     </Text>
                 </View>
 
                 <Input
-                    label="Email"
+                    label={t('loginEmailLabel')}
                     placeholder="exemplu@email.com"
                     value={email}
                     onChangeText={setEmail}
@@ -47,7 +41,7 @@ export default function LoginScreen({ navigation }) {
                 />
 
                 <Input
-                    label="Parola"
+                    label={t('loginPasswordLabel')}
                     placeholder="******"
                     value={password}
                     onChangeText={setPassword}
@@ -55,18 +49,9 @@ export default function LoginScreen({ navigation }) {
                 />
 
                 <View className="mt-4">
-                    <Button
-                        title="Autentificare"
-                        onPress={handleLogin}
-                        loading={loading}
-                    />
-
+                    <Button title={t('loginBtn')} onPress={handleLogin} loading={loading} />
                     <View className="mt-4">
-                        <Button
-                            title="Nu ai cont? Inregistreaza-te"
-                            onPress={() => navigation.navigate('Register')}
-                            variant="ghost"
-                        />
+                        <Button title={t('loginNoAccount')} onPress={() => navigation.navigate('Register')} variant="ghost" />
                     </View>
                 </View>
             </View>

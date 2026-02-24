@@ -6,6 +6,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { supabase } from './src/lib/supabase';
 import { NativeWindStyleSheet } from "nativewind";
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { AppProvider } from './src/lib/AppContext';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -82,10 +83,12 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <NavigationContainer>
-        {session && session.user ? <AppNavigator /> : <AuthNavigator />}
-      </NavigationContainer>
-    </ErrorBoundary>
+    <AppProvider>
+      <ErrorBoundary>
+        <NavigationContainer>
+          {session && session.user ? <AppNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+      </ErrorBoundary>
+    </AppProvider>
   );
 }

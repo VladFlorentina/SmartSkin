@@ -43,7 +43,7 @@ export async function fetchProductMetadata(barcode, timeoutMs = 3000) {
  * @param {number} limit - Numar maxim de rezultate
  * @returns {Promise<Array>}
  */
-export async function searchProductsByName(searchText, limit = 5) {
+export async function searchProductsByName(searchText, limit = 50) {
     try {
         const response = await axios.get('https://world.openbeautyfacts.org/cgi/search.pl', {
             params: {
@@ -52,8 +52,9 @@ export async function searchProductsByName(searchText, limit = 5) {
                 action: 'process',
                 json: 1,
                 page_size: limit,
+                fields: 'code,product_name,brands,image_front_url,image_url,ingredients_text,categories',
             },
-            timeout: 6000,
+            timeout: 12000,
         });
 
         const products = response.data?.products;

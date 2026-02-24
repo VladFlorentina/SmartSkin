@@ -1,13 +1,14 @@
 import { View, SafeAreaView, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useApp } from '../lib/AppContext';
 
 export default function Layout({ children, className = "" }) {
     const paddingTop = Platform.OS === "android" ? RNStatusBar.currentHeight : 0;
+    const { colors, isDark } = useApp();
 
     return (
-        // Fundal roz pal (brand-50) pentru toata aplicatia
-        <SafeAreaView className="flex-1 bg-brand-50" style={{ paddingTop }}>
-            <StatusBar style="dark" />
+        <SafeAreaView className="flex-1" style={{ paddingTop, backgroundColor: colors.bg }}>
+            <StatusBar style={isDark ? 'light' : 'dark'} />
             <View className={`flex-1 px-6 ${className}`}>
                 {children}
             </View>

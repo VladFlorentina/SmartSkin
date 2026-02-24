@@ -63,7 +63,7 @@ export async function fetchProductDetails(barcode) {
  * @param {object} product - Product context data
  * @param {Array} history - Conversation history [{sender, text}]
  */
-export async function sendChatMessage(message, product = null, history = []) {
+export async function sendChatMessage(message, product = null, history = [], lang = 'ro') {
     try {
         let contextData = null;
         if (product) {
@@ -97,6 +97,7 @@ export async function sendChatMessage(message, product = null, history = []) {
                 productId: product?.id || null,
                 contextData: contextData,
                 history: formattedHistory,
+                lang: lang,
             }),
         });
 

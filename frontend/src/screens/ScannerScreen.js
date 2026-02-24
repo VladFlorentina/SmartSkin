@@ -3,10 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import Button from '../components/Button';
+import { useApp } from '../lib/AppContext';
 
 export default function ScannerScreen({ navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
+    const { t, colors } = useApp();
 
     // Reseteaza scanner-ul cand user-ul revine pe acest ecran
     useFocusEffect(
@@ -17,23 +19,23 @@ export default function ScannerScreen({ navigation }) {
 
     // If permissions are still loading
     if (!permission) {
-        return <View className="flex-1 bg-brand-50" />;
+        return <View className="flex-1" style={{ backgroundColor: colors.bg }} />;
     }
 
     // If permission not granted
     if (!permission.granted) {
         return (
-            <View className="flex-1 items-center justify-center p-6 bg-brand-50">
-                <Text className="text-xl font-bold text-brand-900 mb-4 text-center">
-                    Avem nevoie de acces la camera pentru a scana produse.
+            <View className="flex-1 items-center justify-center p-6" style={{ backgroundColor: colors.bg }}>
+                <Text className="text-xl font-bold mb-4 text-center" style={{ color: colors.text }}>
+                    {t('scannerPermissionText')}
                 </Text>
                 <Button
-                    title="Permite Accesul"
+                    title={t('scannerAllow')}
                     onPress={requestPermission}
                 />
                 <View className="mt-4">
                     <Button
-                        title="Inapoi"
+                        title={t('scannerBack')}
                         onPress={() => navigation.navigate('Home')}
                         variant="ghost"
                     />

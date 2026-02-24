@@ -4,91 +4,48 @@ import { supabase } from '../lib/supabase';
 import Layout from '../components/Layout';
 import Input from '../components/Input';
 import Button from '../components/Button';
+import { useApp } from '../lib/AppContext';
 
 export default function RegisterScreen({ navigation }) {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const { t, colors } = useApp();
 
     async function handleRegister() {
-        if (!fullName) {
-            Alert.alert('Eroare', 'Te rugam sa introduci numele complet.');
-            return;
-        }
-
+        if (!fullName) { Alert.alert('Eroare', t('registerErrNoName')); return; }
         setLoading(true);
-
-        const cleanEmail = email.trim();
-        const cleanFullName = fullName.trim();
-
-        // Trimitem full_name in metadata pentru a fi preluat de trigger-ul din backend
         const { error } = await supabase.auth.signUp({
-            email: cleanEmail,
+            email: email.trim(),
             password,
-            options: {
-                data: {
-                    full_name: fullName,
-                },
-            },
+            options: { data: { full_name: fullName.trim() } },
         });
-
-        if (error) {
-            Alert.alert('Eroare la inregistrare', error.message);
-        } else {
-            Alert.alert('Succes!', 'Contul a fost creat cu succes. Verifica-ti email-ul pentru confirmare.');
-        }
+        if (error) { Alert.alert(t('registerErr'), error.message); }
+        else { Alert.alert(t('registerSuccessTitle'), t('registerSuccessMsg')); }
         setLoading(false);
     }
 
     return (
         <Layout className="justify-center">
-            <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-lg mb-6">
+            <View className="p-6 rounded-3xl shadow-lg mb-6" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
                 <View className="mb-8 items-center">
-                    <Text className="text-3xl font-bold text-brand-900 mb-2">
-                        Creeaza Cont
+                    <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>
+                        {t('registerTitle')}
                     </Text>
-                    <Text className="text-brand-400 text-base font-medium">
-                        Incepe-ti calatoria spre ingrijire sigura
+                    <Text className="text-base font-medium" style={{ color: colors.textSub }}>
+                        {t('registerSub')}
                     </Text>
                 </View>
 
-                <Input
-                    label="Nume complet"
-                    placeholder="Maria Popescu"
-                    value={fullName}
-                    onChangeText={setFullName}
-                />
-
-                <Input
-                    label="Email"
-                    placeholder="exemplu@email.com"
-                    value={email}
-                    onChangeText={setEmail}
-                    keyboardType="email-address"
-                />
-
-                <Input
-                    label="Parola"
-                    placeholder="******"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
+                <Input label={t('registerNameLabel')} placeholder={t('registerNamePlaceholder')} value={fullName} onChangeText={setFullName} />
+                <Input label={t('registerEmailLabel')} placeholder="exemplu@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                <Input label={t('registerPasswordLabel')} placeholder="******" value={password} onChangeText={setPassword} secureTextEntry />
 
                 <View className="mt-4">
-                    <Button
-                        title="Inregistrare"
-                        onPress={handleRegister}
-                        loading={loading}
-                    />
-
+                    <Button title={t('registerBtn')} onPress={handleRegister} loading={loading} />
                     <View className="mt-4">
-                        <Button
-                            title="Ai deja cont? Autentifica-te"
-                            onPress={() => navigation.navigate('Login')}
-                            variant="ghost"
-                        />
+                        <Button title={t('registerHasAccount')} onPress={() => navigation.navigate('Login')} variant="ghost" />
                     </View>
                 </View>
             </View>

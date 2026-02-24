@@ -20,15 +20,53 @@ Proiect de licenta.
 ### Algoritm de analiza toxicitate (toxicityAnalyzer.js)
 
 - Batch query optimizat: un singur SELECT pentru toate ingredientele din lista.
-- Normalizare INCI: elimina sinonimele din paranteze (ex: "Parfum (Fragrance)" -> "PARFUM").
+- Normalizare INCI avansata:
+  - Elimina sinonimele din paranteze: `"Parfum (Fragrance)"` -> `"PARFUM"`
+  - Rezolva slash-uri: `"Aqua/Water/Eau"` -> incearca `AQUA`, `WATER`, `EAU`
+  - Sterge punctuatia de la sfarsit: `"Potassium Sorbate."` -> `"POTASSIUM SORBATE"`
+  - Variantele cu/fara punct final: `"ALCOHOL DENAT"` gaseste `"ALCOHOL DENAT."` din CosIng
+  - Normalizare coloranti: `"C.I. 77891"` <-> `"CI 77891"`
+  - Expandare compusi `(and)`: `"Cetyl Alcohol (and) Glyceryl Stearate"` -> 2 ingrediente separate
+  - Tabel de sinonime comerciale (~60 intrari): `MATRIXYL` -> `PALMITOYL PENTAPEPTIDE-4`, `ALOE VERA` -> `ALOE BARBADENSIS LEAF JUICE` etc.
 - Scor de siguranta 0-100:
   - **Score cap:** ingredientul cu riscul cel mai mare plafoneaza scorul maxim posibil
     (ex: ingredient interzis -> max 20/100)
   - **Position multiplier:** primele 5 ingrediente au penalizare x1.5 (concentratie mai mare)
   - **Cocktail effect:** 3+ ingrediente de risc >= 3 adauga penalizare suplimentara
 - Diferentiere alergeni parfumati: Limonene, Linalool etc. primesc risc 2 (nu 3) - mai realist.
-- Commercial watchlist: fallback pentru ingrediente controversate dar legale (SLS, PEG, BHT etc.)
+- **Commercial watchlist (~30 reguli):** aplicat CA OVERLAY si pentru ingrediente gasite in CosIng cu scor 10.
+  Ingrediente EU-legale dar controversate stiintific primesc penalizare suplimentara:
+  - Saruri de aluminiu (antiperspirante) - risc 3
+  - Uleiuri minerale (Paraffinum Liquidum, Petrolatum) - risc 2
+  - Compusi PEG / etoxilati (-eth-, isoceteth) - risc 2-3
+  - Siliconi ciclici (siloxane, cyclomethicone) - risc 3-4
+  - BHA/BHT - risc 4, eliberatori de formaldehida - risc 3-4
+  - Parfum/Fragrance - risc 3
 - Verificat cu 45 teste Jest.
+
+### AI Fallback pentru ingrediente necunoscute (resolveUnknownIngredients)
+
+Cand un ingredient nu e gasit in baza CosIng si nici in tabelul de sinonime:
+1. Toate ingredientele necunoscute dintr-un produs sunt trimise **intr-un singur apel batch** catre Google Gemini.
+2. AI-ul determina pentru fiecare:
+   - **Sinonim INCI** (`is_synonym: true`): ex. `ARGIRELINE` -> `ACETYL HEXAPEPTIDE-8`
+     - Backend-ul re-interogheaza DB dupa INCI-ul rezolvat
+     - Ingredientul e scorat normal din CosIng
+   - **Ingredient cu adevarat nou** (`is_synonym: false`):
+     - AI-ul evalueaza siguranta si asigneaza un scor pe scala CosIng (-10 la 10)
+     - Ingredientul e **inserat permanent in tabela `ingredients`** cu prefixul `[AI]` in descriere
+     - La urmatoarea scanare a aceluiasi ingredient, e gasit direct din DB (fara AI)
+3. Daca AI-ul pica, analiza continua fara el (fallback graceful).
+
+**Efect de invatare:** baza de date creste automat cu fiecare produs nou scanat.
+
+### Migrare baza de date pentru AI Fallback
+
+Fisier: `database/migrate_ingredients_ai.sql`
+- Adauga secventa auto-increment pentru ID: `ingredients_id_seq` (porneste de la 30081)
+- Adauga constrangere UNIQUE pe `inci_name` (necesara pentru `upsert ON CONFLICT`)
+- Adauga index `LOWER(inci_name)` pentru cautari case-insensitive rapide
+- Trebuie rulat o singura data in Supabase SQL Editor dupa popularea initiala din CSV
 
 ### Personalizare bazata pe profil utilizator
 

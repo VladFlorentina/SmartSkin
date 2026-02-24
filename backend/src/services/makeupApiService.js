@@ -8,7 +8,7 @@ const MAKEUP_API_BASE = 'https://makeup-api.herokuapp.com/api/v1';
  * @param {number} limit - Numar maxim de rezultate (default 5)
  * @returns {Promise<Array>} - Lista de produse
  */
-export async function searchMakeupByName(name, limit = 5) {
+export async function searchMakeupByName(name, limit = 30) {
     try {
         const response = await axios.get(`${MAKEUP_API_BASE}/products.json`, {
             params: { product_name: name },

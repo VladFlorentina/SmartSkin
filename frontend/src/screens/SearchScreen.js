@@ -4,12 +4,7 @@ import {
     ActivityIndicator, Image
 } from 'react-native';
 import { searchProducts } from '../lib/api';
-
-const SOURCE_BADGE = {
-    cache: { label: 'Analizat', bg: 'bg-sage-100', text: 'text-sage-600', border: 'border-sage-200' },
-    obf:   { label: 'Cosmetice', bg: 'bg-sky-100', text: 'text-sky-600', border: 'border-sky-200' },
-    makeup: { label: 'Machiaj', bg: 'bg-blush-100', text: 'text-brand-500', border: 'border-blush-200' },
-};
+import { useApp } from '../lib/AppContext';
 
 function ScoreBadge({ score }) {
     if (score === null || score === undefined) return null;
@@ -28,6 +23,13 @@ export default function SearchScreen({ navigation }) {
     const [loading, setLoading] = useState(false);
     const [searched, setSearched] = useState(false);
     const [error, setError] = useState(null);
+    const { colors, t } = useApp();
+
+    const SOURCE_BADGE = {
+        cache:  { label: t('searchBadgeAnalyzed'), bg: 'bg-sage-100', text: 'text-sage-600', border: 'border-sage-200' },
+        obf:    { label: t('searchBadgeCosmetics'), bg: 'bg-sky-100', text: 'text-sky-600', border: 'border-sky-200' },
+        makeup: { label: t('searchBadgeMakeup'), bg: 'bg-blush-100', text: 'text-brand-500', border: 'border-blush-200' },
+    };
 
     const handleSearch = useCallback(async () => {
         const q = query.trim();
@@ -41,7 +43,7 @@ export default function SearchScreen({ navigation }) {
             const data = await searchProducts(q);
             setResults(data);
         } catch (err) {
-            setError('Nu am putut efectua cautarea. Verifica conexiunea.');
+            setError(t('searchError'));
         } finally {
             setLoading(false);
         }
@@ -59,28 +61,30 @@ export default function SearchScreen({ navigation }) {
             <TouchableOpacity
                 onPress={() => handleItemPress(item)}
                 activeOpacity={0.75}
-                className="bg-white rounded-3xl p-4 mb-3 flex-row items-center border border-brand-50 shadow-sm"
+                className="rounded-3xl p-4 mb-3 flex-row items-center shadow-sm"
+                style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
             >
                 {/* Imagine */}
                 {item.imageUrl ? (
                     <Image
                         source={{ uri: item.imageUrl }}
-                        className="w-14 h-14 rounded-2xl bg-brand-50"
+                        className="w-14 h-14 rounded-2xl"
+                        style={{ backgroundColor: colors.bg }}
                         resizeMode="contain"
                     />
                 ) : (
-                    <View className="w-14 h-14 bg-brand-50 rounded-2xl items-center justify-center">
+                    <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.bg }}>
                         <Text className="text-2xl">🧴</Text>
                     </View>
                 )}
 
                 {/* Info */}
                 <View className="flex-1 ml-4">
-                    <Text className="text-brand-900 font-bold text-sm" numberOfLines={1}>
+                    <Text className="font-bold text-sm" numberOfLines={1} style={{ color: colors.text }}>
                         {item.name}
                     </Text>
                     {item.brand ? (
-                        <Text className="text-brand-400 text-xs mt-0.5 font-medium" numberOfLines={1}>
+                        <Text className="text-xs mt-0.5 font-medium" numberOfLines={1} style={{ color: colors.textSub }}>
                             {item.brand}
                         </Text>
                     ) : null}
@@ -101,7 +105,7 @@ export default function SearchScreen({ navigation }) {
                         <Text className="text-brand-300 text-lg">›</Text>
                     ) : (
                         <View className="bg-brand-50 rounded-xl px-2 py-1">
-                            <Text className="text-brand-300 text-[10px] font-medium">Fara cod</Text>
+                            <Text className="text-brand-300 text-[10px] font-medium">{t('searchNoBarcode')}</Text>
                         </View>
                     )}
                 </View>
@@ -110,30 +114,32 @@ export default function SearchScreen({ navigation }) {
     };
 
     return (
-        <View className="flex-1 bg-brand-50">
+        <View className="flex-1" style={{ backgroundColor: colors.bg }}>
 
             {/* Header */}
-            <View className="bg-white pt-12 pb-4 px-6 border-b border-brand-100 shadow-sm z-10">
+            <View className="pt-12 pb-4 px-6 shadow-sm z-10" style={{ backgroundColor: colors.card, borderBottomWidth: 1, borderColor: colors.border }}>
                 <View className="flex-row items-center mb-4">
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
-                        className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4"
+                        className="w-10 h-10 rounded-full items-center justify-center mr-4"
+                        style={{ backgroundColor: colors.bg }}
                     >
                         <Text className="text-brand-500 font-bold text-lg">←</Text>
                     </TouchableOpacity>
                     <View>
-                        <Text className="text-2xl font-black text-brand-900">Cauta Produs</Text>
-                        <Text className="text-xs text-brand-400 font-medium">Cosmetice, creme, machiaj</Text>
+                        <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('searchTitle')}</Text>
+                        <Text className="text-xs font-medium" style={{ color: colors.textSub }}>{t('searchSubtitle')}</Text>
                     </View>
                 </View>
 
                 {/* Search bar */}
-                <View className="flex-row items-center bg-brand-50 border border-brand-200 rounded-2xl px-4">
-                    <Text className="text-brand-300 mr-2">🔍</Text>
+                <View className="flex-row items-center border rounded-2xl px-4" style={{ backgroundColor: colors.inputBg, borderColor: colors.border }}>
+                    <Text className="mr-2" style={{ color: colors.textMuted }}>🔍</Text>
                     <TextInput
-                        className="flex-1 py-3 text-brand-900 text-sm"
-                        placeholder="ex: Cerave, Garnier, foundation..."
-                        placeholderTextColor="#E89BBF"
+                        className="flex-1 py-3 text-sm"
+                        style={{ color: colors.inputText }}
+                        placeholder={t('searchPlaceholder')}
+                        placeholderTextColor={colors.placeholder}
                         value={query}
                         onChangeText={setQuery}
                         onSubmitEditing={handleSearch}
@@ -142,7 +148,7 @@ export default function SearchScreen({ navigation }) {
                     />
                     {query.length > 0 && (
                         <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setSearched(false); }}>
-                            <Text className="text-brand-300 text-lg ml-2">✕</Text>
+                            <Text className="text-lg ml-2" style={{ color: colors.textMuted }}>✕</Text>
                         </TouchableOpacity>
                     )}
                 </View>
@@ -150,15 +156,15 @@ export default function SearchScreen({ navigation }) {
                 {/* Surse */}
                 <View className="flex-row mt-3" style={{ gap: 6 }}>
                     {[
-                        { label: 'Analizat', bg: 'bg-sage-100', text: 'text-sage-600' },
-                        { label: 'Cosmetice', bg: 'bg-sky-100', text: 'text-sky-600' },
-                        { label: 'Machiaj', bg: 'bg-blush-100', text: 'text-brand-500' },
+                        { label: t('searchBadgeAnalyzed'), bg: 'bg-sage-100', text: 'text-sage-600' },
+                        { label: t('searchBadgeCosmetics'), bg: 'bg-sky-100', text: 'text-sky-600' },
+                        { label: t('searchBadgeMakeup'), bg: 'bg-blush-100', text: 'text-brand-500' },
                     ].map(b => (
                         <View key={b.label} className={`px-3 py-1 rounded-full ${b.bg}`}>
                             <Text className={`text-[10px] font-bold ${b.text}`}>{b.label}</Text>
                         </View>
                     ))}
-                    <Text className="text-brand-300 text-[10px] self-center ml-1">= sursa rezultat</Text>
+                    <Text className="text-brand-300 text-[10px] self-center ml-1">{t('searchBadgeLegend')}</Text>
                 </View>
             </View>
 
@@ -166,30 +172,29 @@ export default function SearchScreen({ navigation }) {
             {loading ? (
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color="#D97AAA" />
-                    <Text className="text-brand-400 mt-4 font-medium text-sm">Cautam in toate bazele de date...</Text>
+                    <Text className="mt-4 font-medium text-sm" style={{ color: colors.textSub }}>{t('searchLoading')}</Text>
                 </View>
             ) : error ? (
                 <View className="flex-1 justify-center items-center px-6">
                     <Text className="text-3xl mb-3">😔</Text>
-                    <Text className="text-brand-700 font-bold text-center">{error}</Text>
+                    <Text className="font-bold text-center" style={{ color: colors.text }}>{error}</Text>
                 </View>
             ) : !searched ? (
                 <View className="flex-1 justify-center items-center px-8">
                     <Text className="text-5xl mb-4">🌸</Text>
-                    <Text className="text-brand-700 font-bold text-center text-lg">
-                        Cauta orice produs cosmetic
+                    <Text className="font-bold text-center text-lg" style={{ color: colors.text }}>
+                        {t('searchEmptyTitle')}
                     </Text>
-                    <Text className="text-brand-400 text-sm text-center mt-2 leading-relaxed">
-                        Cautam in produsele deja analizate de comunitate, in baza Open Beauty Facts si in Makeup API.
+                    <Text className="text-sm text-center mt-2 leading-relaxed" style={{ color: colors.textSub }}>
+                        {t('searchEmptySub')}
                     </Text>
                 </View>
             ) : results.length === 0 ? (
                 <View className="flex-1 justify-center items-center px-8">
                     <Text className="text-4xl mb-4">🔍</Text>
-                    <Text className="text-brand-700 font-bold text-center">Niciun rezultat pentru "{query}"</Text>
-                    <Text className="text-brand-400 text-sm text-center mt-2 leading-relaxed">
-                        Incearca alt nume de produs sau brand.{'\n'}
-                        Daca il ai la tine, scaneaza eticheta direct!
+                    <Text className="font-bold text-center" style={{ color: colors.text }}>{t('searchNoResultsFor')} "{query}"</Text>
+                    <Text className="text-sm text-center mt-2 leading-relaxed" style={{ color: colors.textSub }}>
+                        {t('searchNoResultsSub')}
                     </Text>
                 </View>
             ) : (
@@ -201,7 +206,7 @@ export default function SearchScreen({ navigation }) {
                     showsVerticalScrollIndicator={false}
                     ListHeaderComponent={
                         <Text className="text-brand-400 text-xs font-medium mb-3">
-                            {results.length} rezultate gasite
+                            {results.length} {t('searchResultsFound')}
                         </Text>
                     }
                 />

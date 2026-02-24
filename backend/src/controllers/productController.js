@@ -23,18 +23,18 @@ export async function searchProducts(req, res) {
 
         // Rulam cautarile in paralel pentru viteza maxima
         const [supabaseResults, obfResults, makeupResults] = await Promise.allSettled([
-            // 1. Cache Supabase - produse deja analizate
+            // 1. Cache Supabase - produse deja analizate (cautam dupa nume SAU brand)
             supabase
                 .from('products')
                 .select('barcode, name, brand, image_url')
-                .ilike('name', `%${searchText}%`)
-                .limit(5),
+                .or(`name.ilike.%${searchText}%,brand.ilike.%${searchText}%`)
+                .limit(50),
 
             // 2. Open Beauty Facts - skincare
-            searchProductsByName(searchText, 5),
+            searchProductsByName(searchText, 50),
 
             // 3. Makeup API - machiaj
-            searchMakeupByName(searchText, 5),
+            searchMakeupByName(searchText, 30),
         ]);
 
         const combined = [];
@@ -226,25 +226,55 @@ export async function saveToHistory(req, res) {
             return res.status(400).json({ error: 'Product not found' });
         }
 
-        // Salveaza in istoric
-        const { data, error } = await supabase
+        // Check if this product already exists in the user's history
+        const { data: existing, error: fetchError } = await supabase
             .from('scanned_products')
-            .insert({
-                user_id: userId,
-                product_id: productDbId,
-                safety_score: safetyScore || 0,
-                scanned_at: new Date().toISOString(),
-                is_favorite: false
-            })
-            .select()
-            .single();
+            .select('id, scan_count')
+            .eq('user_id', userId)
+            .eq('product_id', productDbId)
+            .maybeSingle();
+
+        if (fetchError) {
+            console.error('Error checking existing history entry:', fetchError);
+            return res.status(500).json({ error: 'Failed to check history' });
+        }
+
+        let data, error;
+
+        if (existing) {
+            // Product already in history — update timestamp, score and increment scan_count
+            ({ data, error } = await supabase
+                .from('scanned_products')
+                .update({
+                    safety_score: safetyScore || existing.safety_score || 0,
+                    scanned_at: new Date().toISOString(),
+                    scan_count: (existing.scan_count || 1) + 1
+                })
+                .eq('id', existing.id)
+                .select()
+                .single());
+        } else {
+            // First time scanning this product — insert with scan_count = 1
+            ({ data, error } = await supabase
+                .from('scanned_products')
+                .insert({
+                    user_id: userId,
+                    product_id: productDbId,
+                    safety_score: safetyScore || 0,
+                    scanned_at: new Date().toISOString(),
+                    is_favorite: false,
+                    scan_count: 1
+                })
+                .select()
+                .single());
+        }
 
         if (error) {
             console.error('Error saving to history:', error);
             return res.status(500).json({ error: 'Failed to save to history' });
         }
 
-        return res.status(201).json(data);
+        return res.status(existing ? 200 : 201).json(data);
 
     } catch (error) {
         console.error('Error in saveToHistory:', error);

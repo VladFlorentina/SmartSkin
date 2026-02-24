@@ -1,4 +1,5 @@
 import { View, TextInput, Text } from 'react-native';
+import { useApp } from '../lib/AppContext';
 
 export default function Input({
     label,
@@ -9,19 +10,26 @@ export default function Input({
     error,
     keyboardType = "default"
 }) {
+    const { colors } = useApp();
     return (
         <View className="mb-5">
             {label && (
-                <Text className="text-brand-900 font-medium mb-2 ml-1">
+                <Text className="font-medium mb-2 ml-1" style={{ color: colors.text }}>
                     {label}
                 </Text>
             )}
             <TextInput
-                className={`w-full bg-white border rounded-2xl p-4 text-gray-800 ${error ? 'border-red-400 bg-red-50' : 'border-brand-200'}`}
+                className={`w-full rounded-2xl p-4 ${error ? 'border-red-400' : ''}`}
+                style={{
+                    backgroundColor: error ? '#FEF2F2' : colors.inputBg,
+                    borderWidth: 1,
+                    borderColor: error ? '#F87171' : colors.border,
+                    color: colors.inputText,
+                }}
                 value={value}
                 onChangeText={onChangeText}
                 placeholder={placeholder}
-                placeholderTextColor="#E89BBF"
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry={secureTextEntry}
                 autoCapitalize="none"
                 keyboardType={keyboardType}

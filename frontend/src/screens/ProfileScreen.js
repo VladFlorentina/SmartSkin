@@ -1,30 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch } from 'react-native';
 import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
-
-const SKIN_TYPES = [
-    { key: 'normal', label: 'Normala', emoji: '🌿' },
-    { key: 'dry', label: 'Uscata', emoji: '🏜️' },
-    { key: 'oily', label: 'Grasa', emoji: '💧' },
-    { key: 'combination', label: 'Mixta', emoji: '🔄' },
-    { key: 'sensitive', label: 'Sensibila', emoji: '🌸' },
-];
-
-const COMMON_ALLERGIES = [
-    'Parfum / Fragrance',
-    'Parabeni',
-    'Sulfati (SLS/SLES)',
-    'Alcool (Alcohol Denat.)',
-    'Coloranti sintetici',
-    'Uleiuri esentiale',
-    'Lanolina',
-    'Formaldehida',
-    'Nichel',
-    'Latex',
-];
+import { useApp } from '../lib/AppContext';
 
 export default function ProfileScreen({ navigation }) {
+    const { t, colors, lang, setLanguage, isDark, toggleDark } = useApp();
+
+    const SKIN_TYPES = [
+        { key: 'normal', label: t('skinTypeNormal'), emoji: '🌿' },
+        { key: 'dry', label: t('skinTypeDry'), emoji: '🏜️' },
+        { key: 'oily', label: t('skinTypeOily'), emoji: '💧' },
+        { key: 'combination', label: t('skinTypeCombination'), emoji: '🔄' },
+        { key: 'sensitive', label: t('skinTypeSensitive'), emoji: '🌸' },
+    ];
+
+    const COMMON_ALLERGIES = [
+        { key: 'Parfum / Fragrance', label: t('allergyParfum') },
+        { key: 'Parabeni', label: t('allergyParabens') },
+        { key: 'Sulfati (SLS/SLES)', label: t('allergySulfates') },
+        { key: 'Alcool (Alcohol Denat.)', label: t('allergyAlcohol') },
+        { key: 'Coloranti sintetici', label: t('allergyDyes') },
+        { key: 'Uleiuri esentiale', label: t('allergyEssentialOils') },
+        { key: 'Lanolina', label: t('allergyLanolin') },
+        { key: 'Formaldehida', label: t('allergyFormaldehyde') },
+        { key: 'Nichel', label: t('allergyNickel') },
+        { key: 'Latex', label: t('allergyLatex') },
+    ];
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [userName, setUserName] = useState('');
@@ -73,10 +75,10 @@ export default function ProfileScreen({ navigation }) {
 
             if (error) throw error;
 
-            Alert.alert('Salvat!', 'Profilul tau a fost actualizat cu succes.');
+            Alert.alert(t('profileSaved'), t('profileSavedMsg'));
         } catch (error) {
             console.error('Eroare la salvarea profilului:', error);
-            Alert.alert('Eroare', 'Nu am putut salva profilul. Incearca din nou.');
+            Alert.alert('Eroare', t('profileSaveErr'));
         } finally {
             setSaving(false);
         }
@@ -92,48 +94,109 @@ export default function ProfileScreen({ navigation }) {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-brand-50">
+            <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.bg }}>
                 <ActivityIndicator size="large" color="#FB7185" />
-                <Text className="text-brand-400 mt-4 font-medium">Se incarca profilul...</Text>
+                <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>{t('profileLoadingText')}</Text>
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-brand-50">
+        <View className="flex-1" style={{ backgroundColor: colors.bg }}>
             {/* Header */}
-            <View className="bg-white pt-12 pb-6 px-6 flex-row items-center border-b border-brand-100 shadow-sm z-10">
+            <View
+                className="pt-12 pb-6 px-6 flex-row items-center border-b shadow-sm z-10"
+                style={{ backgroundColor: colors.header, borderColor: colors.border }}
+            >
                 <TouchableOpacity
                     onPress={() => navigation.goBack()}
-                    className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4"
+                    className="w-10 h-10 rounded-full items-center justify-center mr-4"
+                    style={{ backgroundColor: colors.bg }}
                 >
                     <Text className="text-brand-500 font-bold text-lg">←</Text>
                 </TouchableOpacity>
                 <View>
-                    <Text className="text-2xl font-black text-brand-900">Profilul Meu</Text>
-                    <Text className="text-xs text-brand-400 font-medium">Personalizeaza recomandarile AI</Text>
+                    <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('profileTitle')}</Text>
+                    <Text className="text-xs font-medium" style={{ color: colors.textSub }}>{t('profileSub')}</Text>
                 </View>
             </View>
 
             <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
                 {/* Info utilizator */}
-                <View className="bg-white rounded-3xl p-6 shadow-brand-100 shadow-md mb-6">
+                <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
                     <View className="items-center mb-4">
-                        <View className="w-20 h-20 bg-brand-100 rounded-full items-center justify-center mb-3">
+                        <View className="w-20 h-20 rounded-full items-center justify-center mb-3" style={{ backgroundColor: colors.border }}>
                             <Text className="text-3xl">👤</Text>
                         </View>
-                        <Text className="text-xl font-bold text-brand-900">{userName || 'Utilizator'}</Text>
-                        <Text className="text-brand-400 text-sm">{userEmail}</Text>
+                        <Text className="text-xl font-bold" style={{ color: colors.text }}>{userName || 'Utilizator'}</Text>
+                        <Text className="text-sm" style={{ color: colors.textSub }}>{userEmail}</Text>
+                    </View>
+                </View>
+
+                {/* ===== SETARI APLICATIE ===== */}
+                <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
+                    <Text
+                        className="text-sm font-bold uppercase tracking-wider mb-5"
+                        style={{ color: '#FB7185' }}
+                    >
+                        {t('profileSettings')}
+                    </Text>
+
+                    {/* Limba */}
+                    <View
+                        className="flex-row items-center justify-between pb-4 mb-4"
+                        style={{ borderBottomWidth: 1, borderColor: colors.border }}
+                    >
+                        <Text className="font-semibold text-sm" style={{ color: colors.text }}>
+                            {t('profileLangLabel')}
+                        </Text>
+                        <View className="flex-row" style={{ gap: 8 }}>
+                            {[{ code: 'ro', flag: '🇷🇴', label: 'RO' }, { code: 'en', flag: '🇬🇧', label: 'EN' }].map(({ code, flag, label }) => (
+                                <TouchableOpacity
+                                    key={code}
+                                    onPress={() => setLanguage(code)}
+                                    className="px-3 py-2 rounded-2xl"
+                                    style={{
+                                        backgroundColor: lang === code ? '#FB7185' : colors.border,
+                                    }}
+                                >
+                                    <Text
+                                        className="font-bold text-sm"
+                                        style={{ color: lang === code ? '#FFF' : colors.textSub }}
+                                    >
+                                        {flag} {label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+
+                    {/* Dark Mode */}
+                    <View className="flex-row items-center justify-between">
+                        <View>
+                            <Text className="font-semibold text-sm" style={{ color: colors.text }}>
+                                {t('profileDarkMode')}
+                            </Text>
+                            <Text className="text-xs mt-0.5" style={{ color: colors.textSub }}>
+                                {isDark ? t('profileDarkOn') : t('profileDarkOff')}
+                            </Text>
+                        </View>
+                        <Switch
+                            value={isDark}
+                            onValueChange={toggleDark}
+                            trackColor={{ false: colors.switchTrack, true: '#FB7185' }}
+                            thumbColor={colors.switchThumb}
+                        />
                     </View>
                 </View>
 
                 {/* Tip ten */}
-                <View className="bg-white rounded-3xl p-6 shadow-brand-100 shadow-md mb-6">
+                <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
                     <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-4">
-                        Tipul de ten
+                        {t('profileSkinType')}
                     </Text>
-                    <Text className="text-xs text-brand-400 mb-4">
-                        Selecteaza tipul tau de ten pentru recomandari personalizate de la CosmetiBot.
+                    <Text className="text-xs mb-4" style={{ color: colors.textSub }}>
+                        {t('profileSkinTypeSub')}
                     </Text>
 
                     <View className="flex-row flex-wrap" style={{ gap: 8 }}>
@@ -158,21 +221,21 @@ export default function ProfileScreen({ navigation }) {
                 </View>
 
                 {/* Alergii / Sensibilitati */}
-                <View className="bg-white rounded-3xl p-6 shadow-brand-100 shadow-md mb-6">
+                <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
                     <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-4">
-                        Alergii si Sensibilitati
+                        {t('profileAllergies')}
                     </Text>
-                    <Text className="text-xs text-brand-400 mb-4">
-                        Selecteaza ingredientele la care esti sensibila. AI-ul va tine cont de ele in analiza.
+                    <Text className="text-xs mb-4" style={{ color: colors.textSub }}>
+                        {t('profileAllergiesSub')}
                     </Text>
 
                     <View className="flex-row flex-wrap" style={{ gap: 8 }}>
                         {COMMON_ALLERGIES.map((allergy) => {
-                            const isSelected = allergies.includes(allergy);
+                            const isSelected = allergies.includes(allergy.key);
                             return (
                                 <TouchableOpacity
-                                    key={allergy}
-                                    onPress={() => toggleAllergy(allergy)}
+                                    key={allergy.key}
+                                    onPress={() => toggleAllergy(allergy.key)}
                                     className={`px-4 py-2 rounded-2xl border ${
                                         isSelected
                                             ? 'bg-rose-500 border-rose-500'
@@ -182,7 +245,7 @@ export default function ProfileScreen({ navigation }) {
                                     <Text className={`text-sm font-medium ${
                                         isSelected ? 'text-white' : 'text-brand-700'
                                     }`}>
-                                        {isSelected ? '✓ ' : ''}{allergy}
+                                        {isSelected ? '✓ ' : ''}{allergy.label}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -192,7 +255,7 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Salvare */}
                 <Button
-                    title="Salveaza Profilul"
+                    title={t('profileSaveBtn')}
                     onPress={saveProfile}
                     loading={saving}
                 />
@@ -200,15 +263,15 @@ export default function ProfileScreen({ navigation }) {
                 {/* Deconectare */}
                 <View className="mt-4">
                     <Button
-                        title="Deconectare"
+                        title={t('profileLogoutBtn')}
                         variant="ghost"
                         onPress={() => {
                             Alert.alert(
-                                'Deconectare',
-                                'Esti sigura ca vrei sa te deconectezi?',
+                                t('profileLogoutTitle'),
+                                t('profileLogoutMsg'),
                                 [
-                                    { text: 'Anuleaza', style: 'cancel' },
-                                    { text: 'Da', onPress: () => supabase.auth.signOut() },
+                                    { text: t('profileCancel'), style: 'cancel' },
+                                    { text: t('profileYes'), onPress: () => supabase.auth.signOut() },
                                 ]
                             );
                         }}

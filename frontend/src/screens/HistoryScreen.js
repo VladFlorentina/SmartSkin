@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { fetchUserHistory } from '../lib/api';
+import { useApp } from '../lib/AppContext';
 
 export default function HistoryScreen({ navigation }) {
+    const { t, colors } = useApp();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -38,31 +40,41 @@ export default function HistoryScreen({ navigation }) {
     const renderItem = ({ item }) => {
         const scoreInfo = getScoreIndicator(item.safety_score);
         const productData = item.products || {};
+        // scan_count badge: only shown when product was accessed more than once
+        const scanCount = item.scan_count || 1;
 
         return (
             <TouchableOpacity
                 onPress={() => navigation.navigate('Product', { barcode: productData.barcode })}
-                className="bg-white rounded-3xl p-4 mb-4 flex-row items-center justify-between shadow-brand-100 shadow-sm border border-brand-50"
+                className="rounded-3xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
+                style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
             >
                 <View className="flex-row items-center flex-1">
                     {productData.image_url ? (
-                        <Image source={{ uri: productData.image_url }} className="w-14 h-14 rounded-2xl bg-brand-50" resizeMode="contain" />
+                        <Image source={{ uri: productData.image_url }} className="w-14 h-14 rounded-2xl" style={{ backgroundColor: colors.bg }} resizeMode="contain" />
                     ) : (
-                        <View className="w-14 h-14 bg-brand-50 rounded-2xl items-center justify-center">
-                            <Text className="text-brand-300 text-xs">Fara Poza</Text>
+                        <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.bg }}>
+                            <Text className="text-xs" style={{ color: colors.textMuted }}>{t('historyNoPhoto')}</Text>
                         </View>
                     )}
 
                     <View className="ml-4 flex-1">
-                        <Text className="text-brand-900 font-bold text-base" numberOfLines={1}>
-                            {productData.name || 'Produs Necunoscut'}
+                        <Text className="font-bold text-base" numberOfLines={1} style={{ color: colors.text }}>
+                            {productData.name || t('historyUnknownProduct')}
                         </Text>
-                        <Text className="text-brand-400 font-medium text-xs mt-0.5">
-                            {productData.brand || 'Brand Necunoscut'}
+                        <Text className="font-medium text-xs mt-0.5" style={{ color: colors.textSub }}>
+                            {productData.brand || t('historyUnknownBrand')}
                         </Text>
-                        <Text className="text-brand-300 text-[10px] mt-1">
-                            Scanat: {formatDate(item.scanned_at)}
+                        <Text className="text-[10px] mt-1" style={{ color: colors.textMuted }}>
+                            {t('historyScannedAt')}: {formatDate(item.scanned_at)}
                         </Text>
+                        {scanCount > 1 && (
+                            <View className="mt-1.5 self-start bg-rose-100 border border-rose-200 rounded-full px-2 py-0.5">
+                                <Text className="text-[10px] font-bold text-rose-500">
+                                    🕒 {scanCount} {scanCount === 1 ? t('historyScanCount1') : t('historyScanCountN')}
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
@@ -71,7 +83,7 @@ export default function HistoryScreen({ navigation }) {
                         {item.safety_score}
                     </Text>
                     <Text className="text-[10px] opacity-70 mt-1 uppercase tracking-widest text-brand-500 font-bold">
-                        Scor
+                        {t('historyScore')}
                     </Text>
                 </View>
             </TouchableOpacity>
@@ -79,38 +91,45 @@ export default function HistoryScreen({ navigation }) {
     };
 
     return (
-        <View className="flex-1 bg-brand-50">
-            <View className="bg-white pt-12 pb-6 px-6 flex-row items-center border-b border-brand-100 shadow-sm z-10">
-                <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4">
+        <View className="flex-1" style={{ backgroundColor: colors.bg }}>
+            <View
+                className="pt-12 pb-6 px-6 flex-row items-center border-b shadow-sm z-10"
+                style={{ backgroundColor: colors.header, borderColor: colors.border }}
+            >
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    className="w-10 h-10 rounded-full items-center justify-center mr-4"
+                    style={{ backgroundColor: colors.bg }}
+                >
                     <Text className="text-brand-500 font-bold text-lg">←</Text>
                 </TouchableOpacity>
                 <View>
-                    <Text className="text-2xl font-black text-brand-900">Istoric Scanari</Text>
-                    <Text className="text-xs text-brand-400 font-medium">Dulapiorul meu cu cosmetice</Text>
+                    <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('historyTitle')}</Text>
+                    <Text className="text-xs font-medium" style={{ color: colors.textSub }}>{t('historySub')}</Text>
                 </View>
             </View>
 
             {loading ? (
                 <View className="flex-1 justify-center items-center">
                     <ActivityIndicator size="large" color="#FB7185" />
-                    <Text className="text-brand-400 mt-4 font-medium">Incarcam istoricul tau...</Text>
+                    <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>{t('historyLoadingText')}</Text>
                 </View>
             ) : error ? (
                 <View className="flex-1 items-center justify-center px-6">
                     <Text className="text-2xl mb-4">😔</Text>
-                    <Text className="text-brand-900 font-bold text-center mb-2">{error}</Text>
+                    <Text className="font-bold text-center mb-2" style={{ color: colors.text }}>{error}</Text>
                     <TouchableOpacity onPress={loadHistory} className="mt-4 bg-brand-100 px-6 py-3 rounded-2xl">
-                        <Text className="text-brand-600 font-bold text-center">Incearca din nou</Text>
+                        <Text className="text-brand-600 font-bold text-center">{t('historyRetry')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : history.length === 0 ? (
                 <View className="flex-1 justify-center items-center px-6">
                     <Text className="text-5xl mb-4">📸</Text>
-                    <Text className="text-brand-600 font-medium text-center text-lg">
-                        Inca nu ai scanat niciun produs.
+                    <Text className="font-medium text-center text-lg" style={{ color: colors.text }}>
+                        {t('historyEmpty')}
                     </Text>
-                    <Text className="text-brand-400 text-center mt-2">
-                        Scaneaza o eticheta ca sa apara in istoricul tau!
+                    <Text className="text-center mt-2" style={{ color: colors.textSub }}>
+                        {t('historyEmptySub')}
                     </Text>
                 </View>
             ) : (

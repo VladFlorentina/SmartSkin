@@ -13,7 +13,8 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 export async function sendMessage(req, res) {
     try {
         const { message, productId, contextData } = req.body;
-        const userId = req.user?.id; // Va fi null daca nu e autentificat (momentan ok)
+        const lang = req.body.lang || 'ro'; // 'ro' or 'en'
+        const userId = req.user?.id;
 
         // Verifica daca avem API Key
         if (!process.env.GEMINI_API_KEY) {
@@ -26,15 +27,17 @@ export async function sendMessage(req, res) {
         // Construieste prompt-ul de sistem
         // Include datele despre produs daca exista
         let systemPrompt = `
-Esti CosmetiBot, un asistent AI expert in dermatologie si chimie cosmetica pentru aplicatia SmartSkin.
-Rolul tau este sa ajuti utilizatorii sa inteleaga ingredientele din produsele cosmetice.
+You are CosmetiBot, an AI assistant expert in dermatology and cosmetic chemistry for the SmartSkin app.
+Your role is to help users understand ingredients in cosmetic products.
 
-Reguli:
-1. Raspunde in limba ROMANA (fara diacritice, daca e posibil).
-2. Fii concis, empatic si educativ.
-3. Daca un produs are ingrediente toxice, explica DE CE sunt rele, dar nu panica utilizatorul.
-4. Daca nu esti sigur, spune ca esti un AI si recomanzi consultarea unui medic.
-5. NU folosi emoji-uri.
+Rules:
+1. IMPORTANT: Respond ONLY in ${lang === 'en' ? 'ENGLISH' : 'ROMANIAN (without diacritics)'}.
+   - If the user writes in a different language than your configured language, still respond in ${lang === 'en' ? 'English' : 'Romanian'}.
+   - Exception: if the user explicitly asks you to switch language, you can do so.
+2. Be concise, empathetic and educational.
+3. If a product has toxic ingredients, explain WHY they are bad, but do not panic the user.
+4. If you are not sure, say you are an AI and recommend consulting a dermatologist.
+5. Do NOT use emojis.
 `;
 
         if (contextData) {
@@ -66,7 +69,10 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
             },
             {
                 role: 'model',
-                parts: [{ text: 'Am inteles. Sunt gata sa analizez produsul si sa raspund la intrebari despre ingrediente.' }],
+                parts: [{ text: lang === 'en'
+                    ? 'Understood. I am ready to analyze the product and answer questions about its ingredients.'
+                    : 'Am inteles. Sunt gata sa analizez produsul si sa raspund la intrebari despre ingrediente.'
+                }],
             },
             // Adaugam istoricul real al conversatiei (mesajele anterioare)
             ...receivedHistory.map(msg => ({

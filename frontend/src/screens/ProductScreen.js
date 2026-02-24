@@ -4,9 +4,11 @@ import { fetchProductDetails, saveToUserHistory } from '../lib/api';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import AnimatedScoreRing from '../components/AnimatedScoreRing';
+import { useApp } from '../lib/AppContext';
 
 export default function ProductScreen({ navigation, route }) {
     const { barcode } = route.params;
+    const { t, colors } = useApp();
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [notFound, setNotFound] = useState(false);
@@ -66,7 +68,7 @@ export default function ProductScreen({ navigation, route }) {
         return (
             <Layout className="justify-center items-center">
                 <ActivityIndicator size="large" color="#D97AAA" />
-                <Text className="text-brand-400 mt-4 font-medium">Cautam produsul in baza de date... 🌸</Text>
+                <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>{t('productLoading')}</Text>
             </Layout>
         );
     }
@@ -102,30 +104,30 @@ export default function ProductScreen({ navigation, route }) {
 
     if (notFound) {
         return (
-            <View className="flex-1 bg-brand-50 pt-16 px-6">
+            <View className="flex-1 pt-16 px-6" style={{ backgroundColor: colors.bg }}>
                 <View className="items-center justify-center flex-1">
                     <Text className="text-6xl mb-4">📸</Text>
-                    <Text className="text-2xl font-bold text-brand-900 text-center mb-2">
-                        Produs Nou Detectat!
+                    <Text className="text-2xl font-bold text-center mb-2" style={{ color: colors.text }}>
+                        {t('productNewTitle')}
                     </Text>
 
                     {/* Arata metadata de la OBF daca exista */}
                     {ocrMetadata?.name && (
-                        <View className="bg-white rounded-2xl p-4 mb-4 w-full items-center shadow-sm border border-brand-100">
-                            <Text className="text-brand-800 font-bold text-lg text-center">{ocrMetadata.name}</Text>
+                        <View className="rounded-2xl p-4 mb-4 w-full items-center shadow-sm" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                            <Text className="font-bold text-lg text-center" style={{ color: colors.text }}>{ocrMetadata.name}</Text>
                             {ocrMetadata.brand && (
-                                <Text className="text-brand-400 text-sm mt-1">{ocrMetadata.brand}</Text>
+                                <Text className="text-sm mt-1" style={{ color: colors.textSub }}>{ocrMetadata.brand}</Text>
                             )}
                         </View>
                     )}
 
-                    <Text className="text-brand-600 text-center mb-6 px-4 leading-relaxed">
-                        Acest produs nu a fost analizat inca. Fotografiaza eticheta cu ingredientele si AI-ul nostru il va analiza instant!
+                    <Text className="text-center mb-6 px-4 leading-relaxed" style={{ color: colors.textSub }}>
+                        {t('productNewDesc')}
                     </Text>
 
-                    <View className="bg-brand-100/50 rounded-2xl p-4 mb-8 w-full">
-                        <Text className="text-brand-500 text-center text-sm leading-relaxed">
-                            💡 Rezultatul va fi salvat automat si va fi disponibil instant pentru toti utilizatorii SmartSkin care vor scana acelasi produs.
+                    <View className="rounded-2xl p-4 mb-8 w-full" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                        <Text className="text-center text-sm leading-relaxed" style={{ color: colors.textMuted }}>
+                            💡 {t('productNewHint')}
                         </Text>
                     </View>
 
@@ -155,13 +157,14 @@ export default function ProductScreen({ navigation, route }) {
     const scoreColors = getScoreColor(safetyScore);
 
     return (
-        <View className="flex-1 bg-brand-50">
+        <View className="flex-1" style={{ backgroundColor: colors.bg }}>
             <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
                 {/* Header - Image & Back Button */}
-                <View className="relative bg-white rounded-b-[40px] shadow-brand-100 shadow-xl overflow-hidden pt-12 pb-8 px-6">
+                <View className="relative rounded-b-[40px] shadow-xl overflow-hidden pt-12 pb-8 px-6" style={{ backgroundColor: colors.card }}>
                     <TouchableOpacity
                         onPress={() => navigation.goBack()}
-                        className="absolute top-12 left-6 z-10 bg-brand-50 w-10 h-10 rounded-full items-center justify-center"
+                        className="absolute top-12 left-6 z-10 w-10 h-10 rounded-full items-center justify-center"
+                        style={{ backgroundColor: colors.bg }}
                     >
                         <Text className="text-brand-500 font-bold text-lg">←</Text>
                     </TouchableOpacity>
@@ -174,16 +177,16 @@ export default function ProductScreen({ navigation, route }) {
                                 resizeMode="contain"
                             />
                         ) : (
-                            <View className="w-40 h-40 bg-brand-50 rounded-3xl items-center justify-center">
-                                <Text className="text-brand-300">Fara poza</Text>
+                            <View className="w-40 h-40 rounded-3xl items-center justify-center" style={{ backgroundColor: colors.bg }}>
+                                <Text style={{ color: colors.textMuted }}>{t('productNoPhoto')}</Text>
                             </View>
                         )}
 
-                        <Text className="text-2xl font-bold text-brand-900 mt-6 text-center">
-                            {product.name || 'Produs Necunoscut'}
+                        <Text className="text-2xl font-bold mt-6 text-center" style={{ color: colors.text }}>
+                            {product.name || t('productUnknownName')}
                         </Text>
-                        <Text className="text-brand-400 text-sm font-medium mt-1">
-                            {product.brand || 'Brand Necunoscut'}
+                        <Text className="text-sm font-medium mt-1" style={{ color: colors.textSub }}>
+                            {product.brand || t('productUnknownBrand')}
                         </Text>
                     </View>
                 </View>
@@ -237,9 +240,9 @@ export default function ProductScreen({ navigation, route }) {
                     )}
 
                     {/* AI Chat Prompt */}
-                    <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-md mb-8 items-center">
-                        <Text className="text-brand-700 text-center font-medium mb-4 leading-relaxed">
-                            Ai intrebari despre cum afecteaza acest produs tenul tau?
+                    <View className="p-6 rounded-3xl shadow-md mb-8 items-center" style={{ backgroundColor: colors.card }}>
+                        <Text className="text-center font-medium mb-4 leading-relaxed" style={{ color: colors.textSub }}>
+                            {t('productChatPrompt')}
                         </Text>
                         <Button
                             title="Intreaba CosmetiBot ✨"
@@ -249,9 +252,9 @@ export default function ProductScreen({ navigation, route }) {
                     </View>
 
                     {/* Ingredients Breakdown */}
-                    <Text className="text-xl font-bold text-brand-900 mb-4 ml-2">Analiza Ingredientelor</Text>
+                    <Text className="text-xl font-bold mb-4 ml-2" style={{ color: colors.text }}>{t('productIngredientsTitle')}</Text>
 
-                    <View className="bg-white rounded-3xl shadow-brand-100 shadow-md p-6">
+                    <View className="rounded-3xl shadow-md p-6" style={{ backgroundColor: colors.card }}>
                         {product.analysis?.ingredientsBreakdown && product.analysis.ingredientsBreakdown.length > 0 ? (
                             product.analysis.ingredientsBreakdown.map((item, index) => {
                                 const itemColor = getScoreColor(100 - (item.riskLevel * 20)); // Map risk 0-5 to pale colors (0=emerald, 5=rose)
@@ -259,11 +262,11 @@ export default function ProductScreen({ navigation, route }) {
                                 return (
                                     <View key={index} className="flex-row items-center justify-between py-3 border-b border-brand-50 last:border-0">
                                         <View className="flex-1 pr-4">
-                                            <Text className="text-brand-800 font-medium" numberOfLines={1}>
+                                            <Text className="font-medium" numberOfLines={1} style={{ color: colors.text }}>
                                                 {item.name}
                                             </Text>
                                             {item.description && (
-                                                <Text className="text-brand-400 text-xs mt-1" numberOfLines={2}>
+                                                <Text className="text-xs mt-1" numberOfLines={2} style={{ color: colors.textSub }}>
                                                     {item.description}
                                                 </Text>
                                             )}
@@ -277,8 +280,8 @@ export default function ProductScreen({ navigation, route }) {
                                 );
                             })
                         ) : (
-                            <Text className="text-brand-400 italic text-center py-4">
-                                Analiza detaliata nu este disponibila momentan.
+                            <Text className="italic text-center py-4" style={{ color: colors.textMuted }}>
+                                {t('productNoAnalysis')}
                             </Text>
                         )}
                     </View>

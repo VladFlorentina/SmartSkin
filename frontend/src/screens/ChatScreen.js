@@ -1,13 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { sendChatMessage } from '../lib/api';
+import { useApp } from '../lib/AppContext';
 
 export default function ChatScreen({ navigation, route }) {
     const { product } = route.params || {};
+    const { t, colors, lang } = useApp();
     const [messages, setMessages] = useState([
         {
             id: '1',
-            text: `Salut! Sunt CosmetiBot 🤖\n\nAnalizez acum *${product?.name || 'acest produs'}*.\nAre un scor de siguranta de ${product?.analysis?.safetyScore || 'N/A'}/100.\n\nSimte-te liber sa imi pui intrebari despre ingrediente sau impactul lor asupra tenului tau!`,
+            text: lang === 'en'
+                ? `Hi! I am CosmetiBot 🤖\n\nI am now analyzing **${product?.name || 'this product'}**.\nIt has a safety score of **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nFeel free to ask me anything about the ingredients or their impact on your skin!`
+                : `Salut! Sunt CosmetiBot 🤖\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nSimte-te libera sa imi pui intrebari despre ingrediente sau impactul lor asupra tenului tau!`,
             sender: 'ai'
         }
     ]);
@@ -25,13 +30,13 @@ export default function ChatScreen({ navigation, route }) {
 
         try {
             // Trimitem mesajul + istoricul conversatiei (fara primul mesaj de greeting al AI-ului)
-            const conversationHistory = messages.slice(1); // sarim mesajul initial de bun venit
-            const answer = await sendChatMessage(userMsg.text, product, conversationHistory);
+            const conversationHistory = messages.slice(1);
+            const answer = await sendChatMessage(userMsg.text, product, conversationHistory, lang);
 
             const aiMsg = { id: (Date.now() + 1).toString(), text: answer, sender: 'ai' };
             setMessages(prev => [...prev, aiMsg]);
         } catch (error) {
-            const errorMsg = { id: (Date.now() + 1).toString(), text: "Scuze, am intampinat o eroare de conexiune cu serverul meu AI. 😔", sender: 'ai' };
+            const errorMsg = { id: (Date.now() + 1).toString(), text: t('chatError'), sender: 'ai' };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsLoading(false);
@@ -40,12 +45,39 @@ export default function ChatScreen({ navigation, route }) {
 
     const renderMessage = ({ item }) => {
         const isUser = item.sender === 'user';
+        // Markdown style for AI bubble - adapts text color to dark/light mode
+        const mdStyles = {
+            body: { color: colors.aiText, fontSize: 14, lineHeight: 22 },
+            strong: { color: colors.aiText, fontWeight: 'bold' },
+            em: { color: colors.aiText, fontStyle: 'italic' },
+            paragraph: { marginTop: 0, marginBottom: 6 },
+            list_item: { color: colors.aiText, fontSize: 14 },
+            bullet_list: { marginTop: 2 },
+        };
         return (
             <View className={`mb-4 max-w-[85%] ${isUser ? 'self-end' : 'self-start'}`}>
-                <View className={`p-4 rounded-3xl ${isUser ? 'bg-brand-400 rounded-tr-sm' : 'bg-white rounded-tl-sm shadow-sm border border-brand-50'}`}>
-                    <Text className={isUser ? 'text-white' : 'text-brand-800'}>
-                        {item.text}
-                    </Text>
+                <View
+                    className={`p-4 rounded-3xl ${isUser ? 'rounded-tr-sm' : 'rounded-tl-sm'}`}
+                    style={{
+                        backgroundColor: isUser ? colors.userBubble : colors.aiBubble,
+                        borderWidth: isUser ? 0 : 1,
+                        borderColor: colors.border,
+                        // Subtle shadow for AI bubble
+                        shadowColor: '#000',
+                        shadowOpacity: isUser ? 0 : 0.05,
+                        shadowRadius: 4,
+                        elevation: isUser ? 0 : 2,
+                    }}
+                >
+                    {isUser ? (
+                        // User messages: plain white text
+                        <Text style={{ color: '#FFFFFF', fontSize: 14, lineHeight: 22 }}>
+                            {item.text}
+                        </Text>
+                    ) : (
+                        // AI messages: render markdown - fixes **bold** and *italic* showing as asterisks
+                        <Markdown style={mdStyles}>{item.text}</Markdown>
+                    )}
                 </View>
                 <Text className={`text-[10px] text-brand-300 mt-1 ${isUser ? 'text-right mr-2' : 'ml-2'}`}>
                     {isUser ? 'Tu' : 'CosmetiBot ✨'}
@@ -57,16 +89,24 @@ export default function ChatScreen({ navigation, route }) {
     return (
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            className="flex-1 bg-brand-50"
+            className="flex-1"
+            style={{ backgroundColor: colors.bg }}
         >
             {/* Header */}
-            <View className="bg-white pt-12 pb-4 px-6 flex-row items-center border-b border-brand-100 shadow-sm z-10">
-                <TouchableOpacity onPress={() => navigation.goBack()} className="w-10 h-10 bg-brand-50 rounded-full items-center justify-center mr-4">
+            <View
+                className="pt-12 pb-4 px-6 flex-row items-center border-b shadow-sm z-10"
+                style={{ backgroundColor: colors.header, borderColor: colors.border }}
+            >
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    className="w-10 h-10 rounded-full items-center justify-center mr-4"
+                    style={{ backgroundColor: colors.bg }}
+                >
                     <Text className="text-brand-500 font-bold text-lg">←</Text>
                 </TouchableOpacity>
                 <View>
-                    <Text className="text-lg font-bold text-brand-900">CosmetiBot</Text>
-                    <Text className="text-xs text-brand-400 font-medium">Asistent AI Dermatologic</Text>
+                    <Text className="text-lg font-bold" style={{ color: colors.text }}>CosmetiBot</Text>
+                    <Text className="text-xs font-medium" style={{ color: colors.textSub }}>{t('chatSubtitle')}</Text>
                 </View>
             </View>
 
@@ -79,14 +119,26 @@ export default function ChatScreen({ navigation, route }) {
                 contentContainerStyle={{ padding: 24, paddingBottom: 10 }}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                 onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                style={{ backgroundColor: colors.bg }}
             />
 
             {/* Input Area */}
-            <View className="bg-white px-6 py-4 border-t border-brand-100 flex-row items-center">
+            <View
+                className="px-6 py-4 border-t flex-row items-center"
+                style={{ backgroundColor: colors.header, borderColor: colors.border }}
+            >
                 <TextInput
-                    className="flex-1 bg-brand-50 border border-brand-100 rounded-3xl px-5 py-3 text-brand-900 mr-3"
-                    placeholder="Intreaba ceva..."
-                    placeholderTextColor="#A1A1AA"
+                    className="flex-1 rounded-3xl px-5 py-3 mr-3"
+                    style={{
+                        backgroundColor: colors.inputBg,
+                        color: colors.inputText,   // explicit - fixes invisible text on Android
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        fontSize: 14,
+                        maxHeight: 120,
+                    }}
+                    placeholder={t('chatPlaceholder')}
+                    placeholderTextColor={colors.placeholder}
                     value={inputText}
                     onChangeText={setInputText}
                     multiline
@@ -96,7 +148,8 @@ export default function ChatScreen({ navigation, route }) {
                 <TouchableOpacity
                     onPress={handleSend}
                     disabled={isLoading || !inputText.trim()}
-                    className={`w-12 h-12 rounded-full items-center justify-center ${isLoading || !inputText.trim() ? 'bg-brand-200' : 'bg-brand-500 shadow-md shadow-brand-200'}`}
+                    className="w-12 h-12 rounded-full items-center justify-center"
+                    style={{ backgroundColor: isLoading || !inputText.trim() ? '#F0D9E0' : '#FB7185' }}
                 >
                     {isLoading ? (
                         <ActivityIndicator color="white" size="small" />

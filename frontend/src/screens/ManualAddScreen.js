@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import Button from '../components/Button';
 import { API_BASE_URL } from '../lib/api';
 import { supabase } from '../lib/supabase';
+import { useApp } from '../lib/AppContext';
 
 export default function ManualAddScreen({ navigation, route }) {
     const { barcode: originalBarcode, prefillName, prefillBrand } = route.params || {};
@@ -13,22 +14,20 @@ export default function ManualAddScreen({ navigation, route }) {
     const [imageUri, setImageUri] = useState(null);
     const [base64Image, setBase64Image] = useState(null);
     const [loading, setLoading] = useState(false);
+    const { t, colors } = useApp();
 
     const pickImage = async () => {
-        // Cere permisiuni
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Eroare', 'Avem nevoie de acces la camera pentru a citi ingredientele.');
+            Alert.alert('Eroare', t('manualErrCamera'));
             return;
         }
-
         const result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaType.Images,
-            allowsEditing: true, // ii va permite userului sa taie doar lista
+            allowsEditing: true,
             quality: 0.8,
-            base64: true, // FOARTE IMPORTANT pentru Gemini
+            base64: true,
         });
-
         if (!result.canceled) {
             setImageUri(result.assets[0].uri);
             setBase64Image(result.assets[0].base64);
@@ -37,11 +36,11 @@ export default function ManualAddScreen({ navigation, route }) {
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            Alert.alert('Eroare', 'Te rog sa introduci numele produsului.');
+            Alert.alert('Eroare', t('manualErrNoName'));
             return;
         }
         if (!base64Image) {
-            Alert.alert('Eroare', 'Te rog sa faci o poza la lista de ingrediente.');
+            Alert.alert('Eroare', t('manualErrNoPhoto'));
             return;
         }
 
@@ -74,7 +73,7 @@ export default function ManualAddScreen({ navigation, route }) {
                 throw new Error(data.error || 'A aparut o eroare la salvarea produsului');
             }
 
-            Alert.alert('Succes!', 'Produsul a fost citit de AI si salvat cu succes!');
+            Alert.alert(t('manualSuccessTitle'), t('manualSuccessMsg'));
 
             // Navigheaza la ProductScreen cu barcode-ul salvat
             if (data.barcode) {
@@ -83,7 +82,7 @@ export default function ManualAddScreen({ navigation, route }) {
 
         } catch (error) {
             console.error('Eroare la adaugarea manuala:', error);
-            Alert.alert('Eroare', error.message || 'Nu am putut adauga produsul.');
+            Alert.alert('Eroare', error.message || t('manualErrGeneric'));
         } finally {
             setLoading(false);
         }
@@ -93,80 +92,66 @@ export default function ManualAddScreen({ navigation, route }) {
         return (
             <Layout className="justify-center items-center">
                 <ActivityIndicator size="large" color="#FDA4AF" />
-                <Text className="text-brand-400 mt-4 font-medium text-center px-6">
-                    Inteligenta Artificiala Google Gemini extrage si analizeaza ingredientele din poza... 🤖📖
+                <Text className="mt-4 font-medium text-center px-6" style={{ color: colors.textSub }}>
+                    {t('manualLoadingText')} 🤖📖
                 </Text>
             </Layout>
         );
     }
 
     return (
-        <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={{ flex: 1 }}
-        >
-            <ScrollView className="flex-1 bg-brand-50" contentContainerStyle={{ padding: 24, paddingBottom: 60, paddingTop: 40 }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <ScrollView className="flex-1" style={{ backgroundColor: colors.bg }} contentContainerStyle={{ padding: 24, paddingBottom: 60, paddingTop: 40 }}>
 
-                <Text className="text-3xl font-bold text-brand-900 mb-2">Adauga Produs</Text>
-                <Text className="text-brand-500 mb-8 leading-relaxed">
-                    Ajuta comunitatea adaugand acest produs. AI-ul nostru va citi pozele tale si va calcula scorul automat!
-                </Text>
+                <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>{t('manualTitle')}</Text>
+                <Text className="mb-8 leading-relaxed" style={{ color: colors.textSub }}>{t('manualSub')}</Text>
 
-                <View className="bg-white p-6 rounded-3xl shadow-brand-100 shadow-xl mb-6">
+                <View className="p-6 rounded-3xl shadow-xl mb-6" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
 
-                    <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-2">1. Detalii</Text>
+                    <Text className="text-sm font-bold uppercase tracking-wider mb-2" style={{ color: colors.textSub }}>{t('manualStep1')}</Text>
 
                     <View className="mb-4">
-                        <Text className="text-brand-500 font-medium mb-1 ml-1">Nume Produs *</Text>
+                        <Text className="font-medium mb-1 ml-1" style={{ color: colors.textSub }}>{t('manualNameLabel')}</Text>
                         <TextInput
-                            className="bg-brand-50 border border-brand-100 rounded-2xl px-4 py-3 text-brand-900"
-                            placeholder="ex: Aslavital Crema Lift"
+                            className="border rounded-2xl px-4 py-3"
+                            style={{ backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }}
+                            placeholder={t('manualNamePlaceholder')}
+                            placeholderTextColor={colors.placeholder}
                             value={name}
                             onChangeText={setName}
                         />
                     </View>
 
                     <View className="mb-6">
-                        <Text className="text-brand-500 font-medium mb-1 ml-1">Brand (optional)</Text>
+                        <Text className="font-medium mb-1 ml-1" style={{ color: colors.textSub }}>{t('manualBrandLabel')}</Text>
                         <TextInput
-                            className="bg-brand-50 border border-brand-100 rounded-2xl px-4 py-3 text-brand-900"
-                            placeholder="ex: Farmec"
+                            className="border rounded-2xl px-4 py-3"
+                            style={{ backgroundColor: colors.inputBg, borderColor: colors.border, color: colors.inputText }}
+                            placeholder={t('manualBrandPlaceholder')}
+                            placeholderTextColor={colors.placeholder}
                             value={brand}
                             onChangeText={setBrand}
                         />
                     </View>
 
-                    <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-2 mt-4">2. Ingrediente *</Text>
-                    <Text className="text-xs text-brand-400 mb-4 ml-1">
-                        Pentru a analiza toxicitatea, avem nevoie de o poza clara exclusiv cu sectiunea "Ingredients" (INCI) de pe spatele ambalajului.
-                    </Text>
+                    <Text className="text-sm font-bold uppercase tracking-wider mb-2 mt-4" style={{ color: colors.textSub }}>{t('manualStep2')}</Text>
+                    <Text className="text-xs mb-4 ml-1" style={{ color: colors.textMuted }}>{t('manualIngredientsDesc')}</Text>
 
                     {imageUri ? (
                         <View className="items-center mb-6">
-                            <Image source={{ uri: imageUri }} className="w-full h-48 rounded-2xl mb-3 border border-brand-200" />
-                            <Button title="Reface Poza" onPress={pickImage} variant="outline" className="w-full" />
+                            <Image source={{ uri: imageUri }} className="w-full h-48 rounded-2xl mb-3" style={{ borderWidth: 1, borderColor: colors.border }} />
+                            <Button title={t('manualRetakePhoto')} onPress={pickImage} variant="outline" className="w-full" />
                         </View>
                     ) : (
                         <View className="mb-6">
-                            <Button
-                                title="📸 Fotografiaza Lista de Ingrediente"
-                                onPress={pickImage}
-                            />
+                            <Button title={`📸 ${t('manualTakePhoto')}`} onPress={pickImage} />
                         </View>
                     )}
                 </View>
 
                 <View className="gap-y-4">
-                    <Button
-                        title="✨ Adauga in Baza de Date"
-                        onPress={handleSubmit}
-                        disabled={!name.trim() || !base64Image}
-                    />
-                    <Button
-                        title="Anuleaza"
-                        variant="ghost"
-                        onPress={() => navigation.goBack()}
-                    />
+                    <Button title={`✨ ${t('manualSubmitBtn')}`} onPress={handleSubmit} disabled={!name.trim() || !base64Image} />
+                    <Button title={t('manualCancelBtn')} variant="ghost" onPress={() => navigation.goBack()} />
                 </View>
 
             </ScrollView>

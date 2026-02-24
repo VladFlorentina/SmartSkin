@@ -59,3 +59,89 @@ export async function extractIngredientsFromImage(base64Image, mimeType) {
         throw new Error(error.message || 'Eroare la procesarea imaginii cu Inteligenta Artificiala.');
     }
 }
+
+/**
+ * Rezolva ingrediente necunoscute (negasite in baza CosIng) folosind AI.
+ * Pentru fiecare ingredient, AI-ul determina:
+ *   - Daca e un sinonim / denumire comerciala pentru un INCI standard -> returneaza inci_name
+ *   - Daca e cu adevarat necunoscut -> evalueaza siguranta si returneaza score + descriere
+ *
+ * @param {string[]} unknownNames - Lista de ingrediente negasite in DB
+ * @returns {Promise<Array<{
+ *   input: string,
+ *   is_synonym: boolean,
+ *   inci_name: string|null,
+ *   score: number,
+ *   description: string,
+ *   function: string
+ * }>>}
+ */
+export async function resolveUnknownIngredients(unknownNames) {
+    if (!unknownNames || unknownNames.length === 0) return [];
+
+    try {
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+
+        const prompt = `You are an expert cosmetic chemistry AI. I will give you a list of cosmetic ingredient names that were NOT found in the EU CosIng database.
+
+For EACH ingredient, you must determine one of two cases:
+
+CASE A - It IS a known INCI ingredient but written under a trade name, synonym, common name, or abbreviation:
+- Example: "MATRIXYL" is actually "PALMITOYL PENTAPEPTIDE-4"
+- Example: "ALOE VERA" is actually "ALOE BARBADENSIS LEAF JUICE"
+- Example: "VITAMIN C" is actually "ASCORBIC ACID"
+- Set "is_synonym": true and "inci_name": the canonical INCI uppercase name
+
+CASE B - It is a genuinely unknown or proprietary ingredient NOT in the standard INCI database:
+- Set "is_synonym": false and "inci_name": null
+- Assess its safety based on your knowledge of cosmetic chemistry and scientific literature
+- Assign a "score" using the EU CosIng scale:
+    -10 = banned/prohibited
+    -5 = restricted (only allowed at certain concentrations)
+    0 = regulated (allowed colorant, preservative, or UV filter with conditions)
+    5 = generally safe with minor concerns
+    10 = safe, no known restrictions
+- Write a concise "description" in ROMANIAN (max 120 chars) explaining the ingredient
+- Write a "function" in English (e.g., "HUMECTANT", "EMOLLIENT", "PRESERVATIVE", "SURFACTANT")
+
+Return ONLY a valid JSON array. No markdown, no explanations, just the JSON.
+
+Input ingredients:
+${unknownNames.map((n, i) => `${i + 1}. "${n}"`).join('\n')}
+
+Required output format (array with exactly ${unknownNames.length} objects, same order as input):
+[
+  {
+    "input": "original name as given",
+    "is_synonym": true or false,
+    "inci_name": "CANONICAL INCI NAME" or null,
+    "score": number (-10 to 10),
+    "description": "Romanian description",
+    "function": "ENGLISH FUNCTION"
+  }
+]`;
+
+        const result = await model.generateContent(prompt);
+        const responseText = result.response.text().trim();
+
+        // Curata markdown code blocks daca Gemini le adauga
+        const jsonText = responseText
+            .replace(/^```json\s*/i, '')
+            .replace(/^```\s*/i, '')
+            .replace(/```\s*$/i, '')
+            .trim();
+
+        const parsed = JSON.parse(jsonText);
+
+        // Validare: trebuie sa fie array cu acelasi numar de elemente
+        if (!Array.isArray(parsed)) {
+            console.error('[AI RESOLVE] Raspuns invalid - nu e array');
+            return [];
+        }
+
+        return parsed;
+    } catch (error) {
+        console.error('[AI RESOLVE] Eroare la rezolvarea ingredientelor necunoscute:', error.message);
+        return []; // Fallback: returnam array gol, logica existenta va trata ca "unknown"
+    }
+}

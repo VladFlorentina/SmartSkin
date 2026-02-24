@@ -1,0 +1,427 @@
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ============================================================
+// Translations
+// ============================================================
+const T = {
+    ro: {
+        // Profile screen
+        profileTitle: 'Profilul Meu',
+        profileSub: 'Personalizeaza recomandarile AI',
+        profileSettings: 'Setari Aplicatie',
+        profileLangLabel: 'Limba',
+        profileLangRo: 'Romana',
+        profileLangEn: 'Engleza',
+        profileDarkMode: 'Mod Inchis (Dark Mode)',
+        profileDarkOn: 'Activat',
+        profileDarkOff: 'Dezactivat',
+        profileSkinType: 'Tipul de ten',
+        profileSkinTypeSub: 'Selecteaza tipul tau de ten pentru recomandari personalizate de la CosmetiBot.',
+        profileAllergies: 'Alergii si Sensibilitati',
+        profileAllergiesSub: 'Selecteaza ingredientele la care esti sensibila. AI-ul va tine cont de ele in analiza.',
+        profileSaveBtn: 'Salveaza Profilul',
+        profileSaved: 'Salvat!',
+        profileSavedMsg: 'Profilul tau a fost actualizat cu succes.',
+        profileSaveErr: 'Nu am putut salva profilul. Incearca din nou.',
+        profileLoadingText: 'Se incarca profilul...',
+        profileLogoutTitle: 'Deconectare',
+        profileLogoutMsg: 'Esti sigura ca vrei sa te deconectezi?',
+        profileLogoutBtn: 'Deconectare',
+        profileCancel: 'Anuleaza',
+        profileYes: 'Da',
+        // History
+        historyTitle: 'Istoric Scanari',
+        historySub: 'Dulapiorul meu cu cosmetice',
+        historyLoadingText: 'Incarcam istoricul tau...',
+        historyErrLoad: 'Nu am putut incarca istoricul',
+        historyRetry: 'Incearca din nou',
+        historyEmpty: 'Inca nu ai scanat niciun produs.',
+        historyEmptySub: 'Scaneaza o eticheta ca sa apara in istoricul tau!',
+        historyScannedAt: 'Ultima accesare',
+        historyScanCount1: 'verificare',
+        historyScanCountN: 'verificari',
+        historyNoPhoto: 'Fara Poza',
+        historyUnknownProduct: 'Produs Necunoscut',
+        historyUnknownBrand: 'Brand Necunoscut',
+        historyScore: 'Scor',
+        // Chat
+        chatSubtitle: 'Asistent AI Dermatologic',
+        chatPlaceholder: 'Intreaba ceva...',
+        chatError: 'Scuze, am intampinat o eroare de conexiune cu serverul meu AI.',
+        // Scanner
+        scannerPermissionText: 'Avem nevoie de acces la camera pentru a scana produse.',
+        scannerAllow: 'Permite Accesul',
+        scannerBack: 'Inapoi',
+        // Product
+        productLoading: 'Cautam produsul in baza de date... \uD83C\uDF38',
+        productNewTitle: 'Produs Nou Detectat!',
+        productNewDesc: 'Acest produs nu a fost analizat inca. Fotografiaza eticheta cu ingredientele si AI-ul nostru il va analiza instant!',
+        productNewHint: 'Rezultatul va fi salvat automat si va fi disponibil instant pentru toti utilizatorii SmartSkin care vor scana acelasi produs.',
+        productNoPhoto: 'Fara poza',
+        productUnknownName: 'Produs Necunoscut',
+        productUnknownBrand: 'Brand Necunoscut',
+        productChatPrompt: 'Ai intrebari despre cum afecteaza acest produs tenul tau?',
+        productIngredientsTitle: 'Analiza Ingredientelor',
+        productNoAnalysis: 'Analiza detaliata nu este disponibila momentan.',
+        // Login
+        loginTitle: 'Bine ai revenit!',
+        loginSub: 'Conecteaza-te la contul tau SmartSkin',
+        loginEmailLabel: 'Email',
+        loginPasswordLabel: 'Parola',
+        loginBtn: 'Autentificare',
+        loginNoAccount: 'Nu ai cont? Inregistreaza-te',
+        loginErr: 'Eroare de autentificare',
+        // Register
+        registerTitle: 'Creeaza Cont',
+        registerSub: 'Incepe-ti calatoria spre ingrijire sigura',
+        registerNameLabel: 'Nume complet',
+        registerNamePlaceholder: 'Maria Popescu',
+        registerEmailLabel: 'Email',
+        registerPasswordLabel: 'Parola',
+        registerBtn: 'Inregistrare',
+        registerHasAccount: 'Ai deja cont? Autentifica-te',
+        registerErrNoName: 'Te rugam sa introduci numele complet.',
+        registerErr: 'Eroare la inregistrare',
+        registerSuccessTitle: 'Succes!',
+        registerSuccessMsg: 'Contul a fost creat cu succes. Verifica-ti email-ul pentru confirmare.',
+        // ManualAdd
+        manualTitle: 'Adauga Produs',
+        manualSub: 'Ajuta comunitatea adaugand acest produs. AI-ul nostru va citi pozele tale si va calcula scorul automat!',
+        manualLoadingText: 'Inteligenta Artificiala Google Gemini extrage si analizeaza ingredientele din poza...',
+        manualStep1: '1. Detalii',
+        manualNameLabel: 'Nume Produs *',
+        manualNamePlaceholder: 'ex: Aslavital Crema Lift',
+        manualBrandLabel: 'Brand (optional)',
+        manualBrandPlaceholder: 'ex: Farmec',
+        manualStep2: '2. Ingrediente *',
+        manualIngredientsDesc: 'Pentru a analiza toxicitatea, avem nevoie de o poza clara exclusiv cu sectiunea "Ingredients" (INCI) de pe spatele ambalajului.',
+        manualRetakePhoto: 'Reface Poza',
+        manualTakePhoto: 'Fotografiaza Lista de Ingrediente',
+        manualSubmitBtn: 'Adauga in Baza de Date',
+        manualCancelBtn: 'Anuleaza',
+        manualErrNoName: 'Te rog sa introduci numele produsului.',
+        manualErrNoPhoto: 'Te rog sa faci o poza la lista de ingrediente.',
+        manualErrCamera: 'Avem nevoie de acces la camera pentru a citi ingredientele.',
+        manualErrGeneric: 'Nu am putut adauga produsul.',
+        manualSuccessTitle: 'Succes!',
+        manualSuccessMsg: 'Produsul a fost citit de AI si salvat cu succes!',
+        // Home
+        homeGreetingMorning: 'Buna dimineata',
+        homeGreetingAfternoon: 'Buna ziua',
+        homeGreetingEvening: 'Buna seara',
+        homeUserDefault: 'utilizatoare',
+        homeBannerTitle: 'Stii ce pui\npe pielea ta? \uD83D\uDC84',
+        homeBannerSub: 'Analizeaza orice cosmetica in cateva secunde cu baza de date CosIng a Uniunii Europene.',
+        homeActionsTitle: 'Ce vrei sa faci?',
+        homeActionScanTitle: 'Scaneaza',
+        homeActionScanSub: 'Citeste codul de bare',
+        homeActionSearchTitle: 'Cauta',
+        homeActionSearchSub: 'Gaseste un produs',
+        homeActionHistoryTitle: 'Istoric',
+        homeActionHistorySub: 'Produsele tale',
+        homeActionProfileTitle: 'Profilul Meu',
+        homeActionProfileSub: 'Ten si alergii',
+        homeInfoTitle: 'Cum functioneaza SmartSkin?',
+        homeInfoSub: 'Totul despre ingredientele din cosmeticele tale',
+        homeInfoItem1Title: 'Baza de date CosIng UE',
+        homeInfoItem1Desc: '30.000+ ingrediente INCI verificate de Comisia Europeana.',
+        homeInfoItem2Title: 'AI Google Gemini',
+        homeInfoItem2Desc: 'Scaneaza etichete cu camera si extrage ingredientele automat prin OCR.',
+        homeInfoItem3Title: 'Analiza Personalizata',
+        homeInfoItem3Desc: 'Rezultatele se adapteaza la tipul tau de ten si alergiile declarate.',
+        homeInfoItem4Title: 'CosmetiBot',
+        homeInfoItem4Desc: 'Intreaba AI-ul orice despre produse, ingrediente sau ingrijire.',
+        homeFooter: 'SmartSkin foloseste datele oficiale CosIng ale Comisiei Europene pentru a evalua ingredientele cosmetice. Nu inlocuieste sfatul unui dermatolog.',
+        // Profile skin types
+        skinTypeNormal: 'Normala',
+        skinTypeDry: 'Uscata',
+        skinTypeOily: 'Grasa',
+        skinTypeCombination: 'Mixta',
+        skinTypeSensitive: 'Sensibila',
+        // Allergies
+        allergyParfum: 'Parfum / Fragrance',
+        allergyParabens: 'Parabeni',
+        allergySulfates: 'Sulfati (SLS/SLES)',
+        allergyAlcohol: 'Alcool (Alcohol Denat.)',
+        allergyDyes: 'Coloranti sintetici',
+        allergyEssentialOils: 'Uleiuri esentiale',
+        allergyLanolin: 'Lanolina',
+        allergyFormaldehyde: 'Formaldehida',
+        allergyNickel: 'Nichel',
+        allergyLatex: 'Latex',
+        // Search
+        searchTitle: 'Cauta Produs',
+        searchSubtitle: 'Cosmetice, creme, machiaj',
+        searchPlaceholder: 'ex: Cerave, Garnier, foundation...',
+        searchBadgeLegend: '= sursa rezultat',
+        searchBadgeAnalyzed: 'Analizat',
+        searchBadgeCosmetics: 'Cosmetice',
+        searchBadgeMakeup: 'Machiaj',
+        searchLoading: 'Cautam in toate bazele de date...',
+        searchError: 'Nu am putut efectua cautarea. Verifica conexiunea.',
+        searchEmptyTitle: 'Cauta orice produs cosmetic',
+        searchEmptySub: 'Cautam in produsele deja analizate de comunitate, in baza Open Beauty Facts si in Makeup API.',
+        searchNoResultsSub: 'Incearca alt nume de produs sau brand.\nDaca il ai la tine, scaneaza eticheta direct!',
+        searchResultsFound: 'rezultate gasite',
+        searchNoBarcode: 'Fara cod',
+        searchNoResultsFor: 'Niciun rezultat pentru',
+    },
+    en: {
+        // Profile screen
+        profileTitle: 'My Profile',
+        profileSub: 'Personalize AI recommendations',
+        profileSettings: 'App Settings',
+        profileLangLabel: 'Language',
+        profileLangRo: 'Romanian',
+        profileLangEn: 'English',
+        profileDarkMode: 'Dark Mode',
+        profileDarkOn: 'On',
+        profileDarkOff: 'Off',
+        profileSkinType: 'Skin type',
+        profileSkinTypeSub: 'Select your skin type for personalized recommendations from CosmetiBot.',
+        profileAllergies: 'Allergies & Sensitivities',
+        profileAllergiesSub: 'Select ingredients you are sensitive to. The AI will consider them during analysis.',
+        profileSaveBtn: 'Save Profile',
+        profileSaved: 'Saved!',
+        profileSavedMsg: 'Your profile has been updated successfully.',
+        profileSaveErr: 'Could not save the profile. Please try again.',
+        profileLoadingText: 'Loading profile...',
+        profileLogoutTitle: 'Log out',
+        profileLogoutMsg: 'Are you sure you want to log out?',
+        profileLogoutBtn: 'Log out',
+        profileCancel: 'Cancel',
+        profileYes: 'Yes',
+        // History
+        historyTitle: 'Scan History',
+        historySub: 'My cosmetic cabinet',
+        historyLoadingText: 'Loading your history...',
+        historyErrLoad: 'Could not load history',
+        historyRetry: 'Try again',
+        historyEmpty: 'You have not scanned any product yet.',
+        historyEmptySub: 'Scan a label to have it appear in your history!',
+        historyScannedAt: 'Last accessed',
+        historyScanCount1: 'check',
+        historyScanCountN: 'checks',
+        historyNoPhoto: 'No Photo',
+        historyUnknownProduct: 'Unknown Product',
+        historyUnknownBrand: 'Unknown Brand',
+        historyScore: 'Score',
+        // Chat
+        chatSubtitle: 'AI Dermatology Assistant',
+        chatPlaceholder: 'Ask something...',
+        chatError: 'Sorry, I encountered a connection error with my AI server.',
+        // Scanner
+        scannerPermissionText: 'We need camera access to scan products.',
+        scannerAllow: 'Allow Access',
+        scannerBack: 'Back',
+        // Product
+        productLoading: 'Searching for product in the database... \uD83C\uDF38',
+        productNewTitle: 'New Product Detected!',
+        productNewDesc: 'This product has not been analyzed yet. Take a photo of the ingredients label and our AI will analyze it instantly!',
+        productNewHint: 'The result will be saved automatically and instantly available to all SmartSkin users who scan the same product.',
+        productNoPhoto: 'No photo',
+        productUnknownName: 'Unknown Product',
+        productUnknownBrand: 'Unknown Brand',
+        productChatPrompt: 'Do you have questions about how this product affects your skin?',
+        productIngredientsTitle: 'Ingredient Analysis',
+        productNoAnalysis: 'Detailed analysis is not available at the moment.',
+        // Login
+        loginTitle: 'Welcome back!',
+        loginSub: 'Sign in to your SmartSkin account',
+        loginEmailLabel: 'Email',
+        loginPasswordLabel: 'Password',
+        loginBtn: 'Sign In',
+        loginNoAccount: 'No account? Register',
+        loginErr: 'Authentication error',
+        // Register
+        registerTitle: 'Create Account',
+        registerSub: 'Start your journey to safe skincare',
+        registerNameLabel: 'Full name',
+        registerNamePlaceholder: 'Maria Popescu',
+        registerEmailLabel: 'Email',
+        registerPasswordLabel: 'Password',
+        registerBtn: 'Register',
+        registerHasAccount: 'Already have an account? Sign in',
+        registerErrNoName: 'Please enter your full name.',
+        registerErr: 'Registration error',
+        registerSuccessTitle: 'Success!',
+        registerSuccessMsg: 'Account created successfully. Please check your email for confirmation.',
+        // ManualAdd
+        manualTitle: 'Add Product',
+        manualSub: 'Help the community by adding this product. Our AI will read your photo and calculate the score automatically!',
+        manualLoadingText: 'Google Gemini AI is extracting and analyzing the ingredients from the photo...',
+        manualStep1: '1. Details',
+        manualNameLabel: 'Product Name *',
+        manualNamePlaceholder: 'e.g. Cerave Hydrating Cleanser',
+        manualBrandLabel: 'Brand (optional)',
+        manualBrandPlaceholder: 'e.g. Cerave',
+        manualStep2: '2. Ingredients *',
+        manualIngredientsDesc: 'We need a clear photo of the "Ingredients" (INCI) section on the back of the packaging.',
+        manualRetakePhoto: 'Retake Photo',
+        manualTakePhoto: 'Photograph Ingredients List',
+        manualSubmitBtn: 'Add to Database',
+        manualCancelBtn: 'Cancel',
+        manualErrNoName: 'Please enter the product name.',
+        manualErrNoPhoto: 'Please take a photo of the ingredients list.',
+        manualErrCamera: 'We need camera access to read the ingredients.',
+        manualErrGeneric: 'Could not add the product.',
+        manualSuccessTitle: 'Success!',
+        manualSuccessMsg: 'The product was read by AI and saved successfully!',
+        // Home
+        homeGreetingMorning: 'Good morning',
+        homeGreetingAfternoon: 'Good afternoon',
+        homeGreetingEvening: 'Good evening',
+        homeUserDefault: 'friend',
+        homeBannerTitle: 'Do you know what\nyou put on your skin? \uD83D\uDC84',
+        homeBannerSub: 'Analyze any cosmetic in seconds using the EU CosIng database.',
+        homeActionsTitle: 'What do you want to do?',
+        homeActionScanTitle: 'Scan',
+        homeActionScanSub: 'Read barcode',
+        homeActionSearchTitle: 'Search',
+        homeActionSearchSub: 'Find a product',
+        homeActionHistoryTitle: 'History',
+        homeActionHistorySub: 'Your products',
+        homeActionProfileTitle: 'My Profile',
+        homeActionProfileSub: 'Skin & allergies',
+        homeInfoTitle: 'How does SmartSkin work?',
+        homeInfoSub: 'All about the ingredients in your cosmetics',
+        homeInfoItem1Title: 'EU CosIng Database',
+        homeInfoItem1Desc: '30,000+ INCI ingredients verified by the European Commission.',
+        homeInfoItem2Title: 'Google Gemini AI',
+        homeInfoItem2Desc: 'Scan labels with your camera and extract ingredients automatically via OCR.',
+        homeInfoItem3Title: 'Personalized Analysis',
+        homeInfoItem3Desc: 'Results adapt to your skin type and declared allergies.',
+        homeInfoItem4Title: 'CosmetiBot',
+        homeInfoItem4Desc: 'Ask the AI anything about products, ingredients or skincare.',
+        homeFooter: 'SmartSkin uses official CosIng data from the European Commission to evaluate cosmetic ingredients. Not a substitute for dermatologist advice.',
+        // Profile skin types
+        skinTypeNormal: 'Normal',
+        skinTypeDry: 'Dry',
+        skinTypeOily: 'Oily',
+        skinTypeCombination: 'Combination',
+        skinTypeSensitive: 'Sensitive',
+        // Allergies
+        allergyParfum: 'Parfum / Fragrance',
+        allergyParabens: 'Parabens',
+        allergySulfates: 'Sulfates (SLS/SLES)',
+        allergyAlcohol: 'Alcohol (Alcohol Denat.)',
+        allergyDyes: 'Synthetic dyes',
+        allergyEssentialOils: 'Essential oils',
+        allergyLanolin: 'Lanolin',
+        allergyFormaldehyde: 'Formaldehyde',
+        allergyNickel: 'Nickel',
+        allergyLatex: 'Latex',
+        // Search
+        searchTitle: 'Search Product',
+        searchSubtitle: 'Cosmetics, creams, makeup',
+        searchPlaceholder: 'e.g. Cerave, Garnier, foundation...',
+        searchBadgeLegend: '= result source',
+        searchBadgeAnalyzed: 'Analyzed',
+        searchBadgeCosmetics: 'Cosmetics',
+        searchBadgeMakeup: 'Makeup',
+        searchLoading: 'Searching all databases...',
+        searchError: 'Could not perform the search. Check your connection.',
+        searchEmptyTitle: 'Search any cosmetic product',
+        searchEmptySub: 'We search community-analyzed products, Open Beauty Facts and Makeup API.',
+        searchNoResultsSub: 'Try a different product name or brand.\nIf you have it with you, scan the label directly!',
+        searchResultsFound: 'results found',
+        searchNoBarcode: 'No code',
+        searchNoResultsFor: 'No results for',
+    },
+};
+
+// ============================================================
+// Color palettes
+// ============================================================
+export const LIGHT = {
+    bg: '#FFF5F7',
+    card: '#FFFFFF',
+    header: '#FFFFFF',
+    text: '#1E1B4B',
+    textSub: '#9B89A0',
+    textMuted: '#C4B5C8',
+    border: '#F3E8EE',
+    inputBg: '#FFF5F7',
+    inputText: '#1E1B4B',
+    placeholder: '#A1A1AA',
+    userBubble: '#FB7185',
+    aiBubble: '#FFFFFF',
+    aiText: '#1E1B4B',
+    switchTrack: '#E2D9E8',
+    switchThumb: '#FFFFFF',
+    isDark: false,
+};
+
+export const DARK = {
+    bg: '#111827',
+    card: '#1F2937',
+    header: '#1F2937',
+    text: '#F9FAFB',
+    textSub: '#9CA3AF',
+    textMuted: '#6B7280',
+    border: '#374151',
+    inputBg: '#374151',
+    inputText: '#F9FAFB',
+    placeholder: '#6B7280',
+    userBubble: '#BE185D',
+    aiBubble: '#1F2937',
+    aiText: '#F9FAFB',
+    switchTrack: '#374151',
+    switchThumb: '#FB7185',
+    isDark: true,
+};
+
+// ============================================================
+// Context
+// ============================================================
+const AppContext = createContext(null);
+
+export function AppProvider({ children }) {
+    const [lang, setLangState] = useState('ro');
+    const [isDark, setIsDarkState] = useState(false);
+    const [ready, setReady] = useState(false);
+
+    // Load saved prefs on mount
+    useEffect(() => {
+        AsyncStorage.multiGet(['app_lang', 'app_dark'])
+            .then(([[, savedLang], [, savedDark]]) => {
+                if (savedLang === 'ro' || savedLang === 'en') setLangState(savedLang);
+                if (savedDark === 'true') setIsDarkState(true);
+            })
+            .catch(() => {})
+            .finally(() => setReady(true));
+    }, []);
+
+    function t(key) {
+        return T[lang]?.[key] ?? T.ro[key] ?? key;
+    }
+
+    function setLanguage(newLang) {
+        setLangState(newLang);
+        AsyncStorage.setItem('app_lang', newLang).catch(() => {});
+    }
+
+    function toggleDark() {
+        const next = !isDark;
+        setIsDarkState(next);
+        AsyncStorage.setItem('app_dark', String(next)).catch(() => {});
+    }
+
+    const colors = isDark ? DARK : LIGHT;
+
+    // Avoid flash before prefs load
+    if (!ready) return null;
+
+    return (
+        <AppContext.Provider value={{ lang, t, setLanguage, isDark, toggleDark, colors }}>
+            {children}
+        </AppContext.Provider>
+    );
+}
+
+export function useApp() {
+    const ctx = useContext(AppContext);
+    if (!ctx) throw new Error('useApp must be used inside AppProvider');
+    return ctx;
+}
