@@ -9,10 +9,10 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
-// Model primar: gemini-2.5-flash (20 cereri/zi)
-// Model de rezerva: gemini-2.0-flash (20 cereri/zi) - folosit automat la atingerea limitei
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.0-flash';
+// Model primar: gemini-3-flash-preview (20 cereri/zi)
+// Model de rezerva: gemini-2.5-flash (20 cereri/zi) - folosit automat la atingerea limitei
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
 
 /**
  * Detecteaza erori de limita de cereri (HTTP 429 / RESOURCE_EXHAUSTED)
