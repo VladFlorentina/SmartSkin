@@ -7,15 +7,22 @@ import AnimatedScoreRing from '../components/AnimatedScoreRing';
 import { useApp } from '../lib/AppContext';
 
 export default function ProductScreen({ navigation, route }) {
-    const { barcode } = route.params;
+    const { barcode, cachedProduct } = route.params;
     const { t, colors } = useApp();
-    const [product, setProduct] = useState(null);
-    const [loading, setLoading] = useState(true);
+    // Daca avem date din cache (din Istoric), le folosim imediat
+    const [product, setProduct] = useState(
+        cachedProduct?.analysis?.ingredientsBreakdown ? cachedProduct : null
+    );
+    const [loading, setLoading] = useState(
+        !cachedProduct?.analysis?.ingredientsBreakdown
+    );
     const [notFound, setNotFound] = useState(false);
     const [isOffline, setIsOffline] = useState(false);
     const [ocrMetadata, setOcrMetadata] = useState(null); // Metadata de la OBF pentru pre-fill
 
     useEffect(() => {
+        // Daca avem deja date complete din cache, nu mai facem fetch
+        if (cachedProduct?.analysis?.ingredientsBreakdown) return;
         loadProduct();
     }, [barcode]);
 

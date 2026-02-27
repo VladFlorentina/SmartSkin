@@ -47,7 +47,14 @@ export default function HistoryScreen({ navigation }) {
             <TouchableOpacity
                 onPress={() => {
                     if (!productData.barcode) return;
-                    navigation.navigate('Product', { barcode: productData.barcode });
+                    navigation.navigate('Product', {
+                        barcode: productData.barcode,
+                        cachedProduct: {
+                            ...productData,
+                            imageUrl: productData.image_url,
+                            analysis: productData.analysis || { safetyScore: item.safety_score },
+                        }
+                    });
                 }}
                 className="rounded-3xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
                 style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
