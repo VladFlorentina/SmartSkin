@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { useApp } from '../lib/AppContext';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -10,9 +11,9 @@ const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function getScoreStyle(score) {
-    if (score >= 80) return { stroke: '#4ADE80', color: '#16A34A', label: 'Sigur' };
-    if (score >= 40) return { stroke: '#F97316', color: '#C2410C', label: 'Moderat' };
-    return { stroke: '#D97AAA', color: '#A63D75', label: 'Risc Ridicat' };
+    if (score >= 80) return { stroke: '#4ADE80', color: '#16A34A', key: 'scoreLabelSafe' };
+    if (score >= 40) return { stroke: '#F97316', color: '#C2410C', key: 'scoreLabelModerate' };
+    return { stroke: '#D97AAA', color: '#A63D75', key: 'scoreLabelRisk' };
 }
 
 function getScoreEmoji(score) {
@@ -22,6 +23,7 @@ function getScoreEmoji(score) {
 }
 
 export default function AnimatedScoreRing({ score = 0 }) {
+    const { t } = useApp();
     const progress = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -87,7 +89,7 @@ export default function AnimatedScoreRing({ score = 0 }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 }}>
                 <Text style={{ fontSize: 14 }}>{getScoreEmoji(score)}</Text>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: style.color, letterSpacing: 0.5 }}>
-                    {style.label}
+                    {t(style.key)}
                 </Text>
             </View>
         </View>

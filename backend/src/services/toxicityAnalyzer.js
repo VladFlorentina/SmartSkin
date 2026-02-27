@@ -333,15 +333,10 @@ function buildDescription(dbDescription, dbFunction) {
 }
 
 /**
- * Analizeaza lista de ingrediente si calculeaza scorul de siguranta
- * Foloseste datele REALE din Supabase (~30,000 ingrediente CosIng/UE)
- * 
- * OPTIMIZARE: Face un singur query batch in loc de N queries separate
- * 
- * @param {string} ingredientsText - Lista de ingrediente (format text INCI)
- * @returns {Promise<Object>} - Rezultatul analizei
- */
-/**
+ * Analizeaza lista de ingrediente si calculeaza scorul de siguranta.
+ * Foloseste datele din Supabase (~30,000 ingrediente CosIng/UE).
+ * Optimizare: un singur query batch in loc de N queries separate.
+ *
  * @param {string} ingredientsText - Lista de ingrediente (format text INCI)
  * @param {Object|null} userPreferences - { skin_type: string, allergies: string[] } (optional)
  * @returns {Promise<Object>} - Rezultatul analizei
@@ -678,10 +673,10 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
             const category = getCategoryFromDescription(dbMatch.score, dbMatch.description);
             const dbDescription = buildDescription(dbMatch.description, dbMatch.Function);
 
-            // Overlay watchlist: daca ingredientul e "safe" in CosIng (scor 10)
-            // dar apare in watchlist-ul comercial, aplicam nivelul de risc din watchlist.
-            // CosIng = legalitate UE, Watchlist = preocupari stiintifice/consumer suplimentare.
-            const watchlistMatch = dbMatch.score === 10 ? checkCommercialWatchlist(dbMatch.inci_name) : null;
+            // Overlay watchlist: aplicat indiferent de scorul CosIng
+            // Un ingredient restrictionat in UE poate fi si in watchlist (ex: parfum)
+            // CosIng = legalitate UE, Watchlist = preocupari stiintifice/consumer suplimentare
+            const watchlistMatch = checkCommercialWatchlist(dbMatch.inci_name);
             const finalRiskLevel = watchlistMatch ? Math.max(dbRiskLevel, watchlistMatch.riskLevel) : dbRiskLevel;
             const finalCategory = watchlistMatch ? watchlistMatch.category : category;
             const finalDescription = watchlistMatch

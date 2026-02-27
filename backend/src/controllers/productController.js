@@ -144,10 +144,11 @@ export async function getProductByBarcode(req, res) {
             const userPrefs = getUserPreferences(req);
             const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs);
 
-            // Salveaza in cache Supabase
+            // Salvez in cache Supabase cu upsert pentru a evita duplicate
+            // la scanari simultane ale aceluiasi produs de catre mai multi utilizatori
             const { data: savedProduct, error: saveError } = await supabase
                 .from('products')
-                .insert({
+                .upsert({
                     barcode: barcode,
                     name: obfData.name || 'Produs Necunoscut',
                     brand: obfData.brand || 'Brand Necunoscut',
@@ -155,7 +156,7 @@ export async function getProductByBarcode(req, res) {
                     image_url: obfData.imageUrl,
                     category: obfData.categories || '',
                     last_updated: new Date().toISOString()
-                })
+                }, { onConflict: 'barcode' })
                 .select()
                 .single();
 
@@ -386,11 +387,13 @@ export async function addManualProduct(req, res) {
         }
 
         // 4. Returneaza rezultatul
+        // Folosesc cheia ingredients_list (consistent cu raspunsul din getProductByBarcode)
+        // pentru ca ProductScreen si ChatScreen sa citeasca corect ingredientele
         return res.json({
             barcode: savedProduct.barcode,
             name: savedProduct.name,
             brand: savedProduct.brand,
-            ingredientsText: savedProduct.ingredients_list,
+            ingredients_list: savedProduct.ingredients_list,
             imageUrl: null,
             analysis,
             source: 'manual_ocr',

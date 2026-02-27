@@ -1,0 +1,11 @@
+{
+  "typescript.preferences.excludeLibrarySymbolsInNavTo": true,
+  "typescript.tsdk": "frontend/node_modules/typescript/lib",
+  "search.exclude": {
+    "**/node_modules": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true
+  },
+  "typescript.validate.enable": false
+}

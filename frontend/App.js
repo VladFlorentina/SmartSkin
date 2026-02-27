@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import { NativeWindStyleSheet } from "nativewind";
 import ErrorBoundary from './src/components/ErrorBoundary';
@@ -83,12 +84,14 @@ export default function App() {
   }
 
   return (
-    <AppProvider>
-      <ErrorBoundary>
-        <NavigationContainer>
-          {session && session.user ? <AppNavigator /> : <AuthNavigator />}
-        </NavigationContainer>
-      </ErrorBoundary>
-    </AppProvider>
+    <SafeAreaProvider>
+      <AppProvider>
+        <ErrorBoundary>
+          <NavigationContainer>
+            {session && session.user ? <AppNavigator /> : <AuthNavigator />}
+          </NavigationContainer>
+        </ErrorBoundary>
+      </AppProvider>
+    </SafeAreaProvider>
   );
 }

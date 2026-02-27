@@ -17,30 +17,71 @@ export default function ManualAddScreen({ navigation, route }) {
     const { t, colors } = useApp();
 
     const pickImage = async () => {
-        const { status } = await ImagePicker.requestCameraPermissionsAsync();
-        if (status !== 'granted') {
-            Alert.alert('Eroare', t('manualErrCamera'));
-            return;
-        }
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaType.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-        });
-        if (!result.canceled) {
-            setImageUri(result.assets[0].uri);
-            setBase64Image(result.assets[0].base64);
+        Alert.alert(
+            t('scannerPickSource'),
+            t('scannerPickSourceMsg'),
+            [
+                {
+                    text: `📷 ${t('scannerCamera')}`,
+                    onPress: () => launchSource('camera'),
+                },
+                {
+                    text: `🖼️ ${t('scannerGallery')}`,
+                    onPress: () => launchSource('gallery'),
+                },
+                { text: t('scannerCancel'), style: 'cancel' },
+            ]
+        );
+    };
+
+    const launchSource = async (source) => {
+        try {
+            if (source === 'camera') {
+                const { status } = await ImagePicker.requestCameraPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert(t('errorTitle'), t('manualErrCamera'));
+                    return;
+                }
+                const result = await ImagePicker.launchCameraAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
+                if (!result.canceled) {
+                    setImageUri(result.assets[0].uri);
+                    setBase64Image(result.assets[0].base64);
+                }
+            } else {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') {
+                    Alert.alert(t('errorTitle'), t('errGalleryPerm'));
+                    return;
+                }
+                const result = await ImagePicker.launchImageLibraryAsync({
+                    mediaTypes: ['images'],
+                    allowsEditing: true,
+                    quality: 0.8,
+                    base64: true,
+                });
+                if (!result.canceled) {
+                    setImageUri(result.assets[0].uri);
+                    setBase64Image(result.assets[0].base64);
+                }
+            }
+        } catch (err) {
+            console.error('ImagePicker error:', err);
+            Alert.alert(t('errorTitle'), err.message || 'Eroare la selectarea imaginii.');
         }
     };
 
     const handleSubmit = async () => {
         if (!name.trim()) {
-            Alert.alert('Eroare', t('manualErrNoName'));
+            Alert.alert(t('errorTitle'), t('manualErrNoName'));
             return;
         }
         if (!base64Image) {
-            Alert.alert('Eroare', t('manualErrNoPhoto'));
+            Alert.alert(t('errorTitle'), t('manualErrNoPhoto'));
             return;
         }
 
@@ -82,7 +123,7 @@ export default function ManualAddScreen({ navigation, route }) {
 
         } catch (error) {
             console.error('Eroare la adaugarea manuala:', error);
-            Alert.alert('Eroare', error.message || t('manualErrGeneric'));
+            Alert.alert(t('errorTitle'), error.message || t('manualErrGeneric'));
         } finally {
             setLoading(false);
         }
@@ -144,7 +185,7 @@ export default function ManualAddScreen({ navigation, route }) {
                         </View>
                     ) : (
                         <View className="mb-6">
-                            <Button title={`📸 ${t('manualTakePhoto')}`} onPress={pickImage} />
+                            <Button title={t('manualAddPhotoBtn')} onPress={pickImage} />
                         </View>
                     )}
                 </View>

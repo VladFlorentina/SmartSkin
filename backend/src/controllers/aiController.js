@@ -4,6 +4,19 @@ import { supabase } from '../config/supabase.js';
 // Initializare Gemini Client (folosind cheia din .env)
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-flash';
+
+// Detectez erorile de limita de cereri (HTTP 429 / RESOURCE_EXHAUSTED)
+function isRateLimitError(error) {
+    const msg = (error?.message || '').toLowerCase();
+    return (
+        msg.includes('429') ||
+        msg.includes('quota') ||
+        msg.includes('resource_exhausted') ||
+        msg.includes('rate limit') ||
+        msg.includes('ratelimit')
+    );
+}
 
 /**
  * POST /api/chat
@@ -54,9 +67,6 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
 `;
         }
 
-        // Initializeaza modelul
-        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-
         // Construim istoricul real al conversatiei pentru Gemini
         // Formatul history primit din frontend: [{role: 'user'|'model', text: '...'}]
         const receivedHistory = req.body.history || [];
@@ -81,9 +91,24 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
             })),
         ];
 
-        const chat = model.startChat({ history: geminiHistory });
-        const result = await chat.sendMessage(message);
-        const responseText = result.response.text();
+        // Initializeaza modelul cu fallback automat la atingerea limitei zilnice
+        let responseText;
+        try {
+            const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+            const chat = model.startChat({ history: geminiHistory });
+            const result = await chat.sendMessage(message);
+            responseText = result.response.text();
+        } catch (primaryError) {
+            if (isRateLimitError(primaryError)) {
+                console.warn(`[AI CHAT] ${GEMINI_MODEL} a atins limita. Folosesc modelul de rezerva ${GEMINI_FALLBACK_MODEL}...`);
+                const fallbackModel = genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
+                const fallbackChat = fallbackModel.startChat({ history: geminiHistory });
+                const fallbackResult = await fallbackChat.sendMessage(message);
+                responseText = fallbackResult.response.text();
+            } else {
+                throw primaryError;
+            }
+        }
 
         // Salveaza conversatia in baza de date (daca avem User ID)
         if (userId) {

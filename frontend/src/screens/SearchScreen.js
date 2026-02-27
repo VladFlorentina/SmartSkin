@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import {
     View, Text, TextInput, FlatList, TouchableOpacity,
-    ActivityIndicator, Image
+    ActivityIndicator, Image, Alert
 } from 'react-native';
 import { searchProducts } from '../lib/api';
 import { useApp } from '../lib/AppContext';
@@ -50,9 +50,16 @@ export default function SearchScreen({ navigation }) {
     }, [query]);
 
     const handleItemPress = (item) => {
-        if (item.barcode) {
-            navigation.navigate('Product', { barcode: item.barcode });
+        if (!item.barcode) {
+            // Produsul nu are barcode (ex: din Makeup API) - nu pot naviga la analiza
+            Alert.alert(
+                'Produs fara barcode',
+                'Acest produs nu are un cod de bare asociat si nu poate fi analizat direct. Incearca sa il scanezi fizic sau sa il adaugi manual.',
+                [{ text: 'OK' }]
+            );
+            return;
         }
+        navigation.navigate('Product', { barcode: item.barcode });
     };
 
     const renderItem = ({ item }) => {

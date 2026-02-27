@@ -12,7 +12,7 @@ export default function ChatScreen({ navigation, route }) {
             id: '1',
             text: lang === 'en'
                 ? `Hi! I am CosmetiBot 🤖\n\nI am now analyzing **${product?.name || 'this product'}**.\nIt has a safety score of **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nFeel free to ask me anything about the ingredients or their impact on your skin!`
-                : `Salut! Sunt CosmetiBot 🤖\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nSimte-te libera sa imi pui intrebari despre ingrediente sau impactul lor asupra tenului tau!`,
+                : `Salut! Sunt CosmetiBot 🤖\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nPui-mi orice intrebare despre ingrediente sau impactul lor asupra tenului tau!`,
             sender: 'ai'
         }
     ]);
@@ -88,7 +88,8 @@ export default function ChatScreen({ navigation, route }) {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
             className="flex-1"
             style={{ backgroundColor: colors.bg }}
         >

@@ -14,10 +14,15 @@ export default function LoginScreen({ navigation }) {
 
     async function handleLogin() {
         setLoading(true);
-        const cleanEmail = email.trim();
-        const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-        if (error) { Alert.alert(t('loginErr'), error.message); }
-        setLoading(false);
+        try {
+            const cleanEmail = email.trim();
+            const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+            if (error) { Alert.alert(t('loginErr'), error.message); }
+        } catch (err) {
+            Alert.alert(t('loginErr'), 'Nu am putut contacta serverul. Verifica conexiunea.');
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (

@@ -8,7 +8,8 @@ export default function Input({
     placeholder,
     secureTextEntry = false,
     error,
-    keyboardType = "default"
+    keyboardType = "default",
+    autoCapitalize = "none"
 }) {
     const { colors } = useApp();
     return (
@@ -31,7 +32,7 @@ export default function Input({
                 placeholder={placeholder}
                 placeholderTextColor={colors.placeholder}
                 secureTextEntry={secureTextEntry}
-                autoCapitalize="none"
+                autoCapitalize={autoCapitalize}
                 keyboardType={keyboardType}
             />
             {error && (

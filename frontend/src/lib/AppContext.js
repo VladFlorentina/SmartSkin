@@ -53,6 +53,18 @@ const T = {
         scannerPermissionText: 'Avem nevoie de acces la camera pentru a scana produse.',
         scannerAllow: 'Permite Accesul',
         scannerBack: 'Inapoi',
+        scannerHome: 'Acasa',
+        scannerProfile: 'Profil',
+        scannerHistory: 'Istoric',
+        scannerHint: 'Indreapta camera spre codul de bare',
+        scannerRescan: 'Scaneaza din nou',
+        scannerPickSource: 'Sursa Imagine',
+        scannerPickSourceMsg: 'De unde vrei sa selectezi poza?',
+        scannerCamera: 'Camera',
+        scannerGallery: 'Galerie',
+        scannerCancel: 'Anuleaza',
+        errorTitle: 'Eroare',
+        errGalleryPerm: 'Avem nevoie de acces la galerie pentru a selecta o poza.',
         // Product
         productLoading: 'Cautam produsul in baza de date... \uD83C\uDF38',
         productNewTitle: 'Produs Nou Detectat!',
@@ -106,11 +118,12 @@ const T = {
         manualErrGeneric: 'Nu am putut adauga produsul.',
         manualSuccessTitle: 'Succes!',
         manualSuccessMsg: 'Produsul a fost citit de AI si salvat cu succes!',
+        manualAddPhotoBtn: '📸 Adauga Poza Eticheta',
         // Home
         homeGreetingMorning: 'Buna dimineata',
         homeGreetingAfternoon: 'Buna ziua',
         homeGreetingEvening: 'Buna seara',
-        homeUserDefault: 'utilizatoare',
+        homeUserDefault: 'utilizator',
         homeBannerTitle: 'Stii ce pui\npe pielea ta? \uD83D\uDC84',
         homeBannerSub: 'Analizeaza orice cosmetica in cateva secunde cu baza de date CosIng a Uniunii Europene.',
         homeActionsTitle: 'Ce vrei sa faci?',
@@ -166,6 +179,10 @@ const T = {
         searchResultsFound: 'rezultate gasite',
         searchNoBarcode: 'Fara cod',
         searchNoResultsFor: 'Niciun rezultat pentru',
+        // AnimatedScoreRing labels
+        scoreLabelSafe: 'Sigur',
+        scoreLabelModerate: 'Moderat',
+        scoreLabelRisk: 'Risc Ridicat',
     },
     en: {
         // Profile screen
@@ -215,6 +232,18 @@ const T = {
         scannerPermissionText: 'We need camera access to scan products.',
         scannerAllow: 'Allow Access',
         scannerBack: 'Back',
+        scannerHome: 'Home',
+        scannerProfile: 'Profile',
+        scannerHistory: 'History',
+        scannerHint: 'Point the camera at the barcode',
+        scannerRescan: 'Scan again',
+        scannerPickSource: 'Image Source',
+        scannerPickSourceMsg: 'Where do you want to pick the photo from?',
+        scannerCamera: 'Camera',
+        scannerGallery: 'Gallery',
+        scannerCancel: 'Cancel',
+        errorTitle: 'Error',
+        errGalleryPerm: 'We need gallery access to select a photo.',
         // Product
         productLoading: 'Searching for product in the database... \uD83C\uDF38',
         productNewTitle: 'New Product Detected!',
@@ -268,6 +297,7 @@ const T = {
         manualErrGeneric: 'Could not add the product.',
         manualSuccessTitle: 'Success!',
         manualSuccessMsg: 'The product was read by AI and saved successfully!',
+        manualAddPhotoBtn: '📸 Add Ingredients Photo',
         // Home
         homeGreetingMorning: 'Good morning',
         homeGreetingAfternoon: 'Good afternoon',
@@ -328,6 +358,10 @@ const T = {
         searchResultsFound: 'results found',
         searchNoBarcode: 'No code',
         searchNoResultsFor: 'No results for',
+        // AnimatedScoreRing labels
+        scoreLabelSafe: 'Safe',
+        scoreLabelModerate: 'Moderate',
+        scoreLabelRisk: 'High Risk',
     },
 };
 

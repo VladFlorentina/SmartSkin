@@ -58,41 +58,40 @@ export default function ScannerScreen({ navigation }) {
                 barcodeScannerSettings={{
                     barcodeTypes: ["ean13", "ean8", "qr", "upc_a", "upc_e"],
                 }}
-            >
-                <View className="flex-1 bg-transparent flex-row justify-between p-12">
-                    {/* Overlay top items */}
+            />
+            {/* Overlay - separat de CameraView pentru a evita warning-ul */}
+            <View style={StyleSheet.absoluteFillObject} className="flex-row justify-between p-12">
+                <TouchableOpacity
+                    className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
+                    onPress={() => navigation.navigate('Home')}
+                >
+                    <Text className="text-white font-bold text-sm">{t('scannerHome')}</Text>
+                </TouchableOpacity>
+                <View className="flex-row self-start" style={{ gap: 8 }}>
                     <TouchableOpacity
-                        className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
-                        onPress={() => navigation.navigate('Home')}
+                        className="p-3 bg-brand-500/80 rounded-full px-5 flex-row items-center"
+                        onPress={() => navigation.navigate('Profile')}
                     >
-                        <Text className="text-white font-bold text-sm">Acasa</Text>
+                        <Text className="text-white font-bold text-sm">👤 {t('scannerProfile')}</Text>
                     </TouchableOpacity>
-                    <View className="flex-row self-start" style={{ gap: 8 }}>
-                        <TouchableOpacity
-                            className="p-3 bg-brand-500/80 rounded-full px-5 flex-row items-center"
-                            onPress={() => navigation.navigate('Profile')}
-                        >
-                            <Text className="text-white font-bold text-sm">👤 Profil</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            className="p-3 bg-brand-500 rounded-full px-5 flex-row items-center"
-                            onPress={() => navigation.navigate('History')}
-                        >
-                            <Text className="text-white font-bold text-sm">📚 Istoric</Text>
-                        </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity
+                        className="p-3 bg-brand-500 rounded-full px-5 flex-row items-center"
+                        onPress={() => navigation.navigate('History')}
+                    >
+                        <Text className="text-white font-bold text-sm">📚 {t('scannerHistory')}</Text>
+                    </TouchableOpacity>
                 </View>
-                <View className="absolute bottom-16 w-full items-center">
-                    <View className="bg-white/80 px-6 py-3 rounded-2xl">
-                        <Text className="text-brand-900 font-bold">
-                            Indreapta camera spre codul de bare
-                        </Text>
-                    </View>
+            </View>
+            <View className="absolute bottom-16 w-full items-center">
+                <View className="bg-white/80 px-6 py-3 rounded-2xl">
+                    <Text className="text-brand-900 font-bold">
+                        {t('scannerHint')}
+                    </Text>
                 </View>
-            </CameraView>
+            </View>
             {scanned && (
                 <View className="absolute bottom-0 w-full p-6 bg-white rounded-t-3xl shadow-xl">
-                    <Button title="Scaneaza din nou" onPress={() => setScanned(false)} />
+                    <Button title={t('scannerRescan')} onPress={() => setScanned(false)} />
                 </View>
             )}
         </View>

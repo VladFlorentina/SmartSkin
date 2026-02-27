@@ -16,14 +16,19 @@ export default function RegisterScreen({ navigation }) {
     async function handleRegister() {
         if (!fullName) { Alert.alert('Eroare', t('registerErrNoName')); return; }
         setLoading(true);
-        const { error } = await supabase.auth.signUp({
-            email: email.trim(),
-            password,
-            options: { data: { full_name: fullName.trim() } },
-        });
-        if (error) { Alert.alert(t('registerErr'), error.message); }
-        else { Alert.alert(t('registerSuccessTitle'), t('registerSuccessMsg')); }
-        setLoading(false);
+        try {
+            const { error } = await supabase.auth.signUp({
+                email: email.trim(),
+                password,
+                options: { data: { full_name: fullName.trim() } },
+            });
+            if (error) { Alert.alert(t('registerErr'), error.message); }
+            else { Alert.alert(t('registerSuccessTitle'), t('registerSuccessMsg')); }
+        } catch (err) {
+            Alert.alert(t('registerErr'), 'Nu am putut contacta serverul. Verifica conexiunea.');
+        } finally {
+            setLoading(false);
+        }
     }
 
     return (
@@ -38,7 +43,7 @@ export default function RegisterScreen({ navigation }) {
                     </Text>
                 </View>
 
-                <Input label={t('registerNameLabel')} placeholder={t('registerNamePlaceholder')} value={fullName} onChangeText={setFullName} />
+                <Input label={t('registerNameLabel')} placeholder={t('registerNamePlaceholder')} value={fullName} onChangeText={setFullName} autoCapitalize="words" />
                 <Input label={t('registerEmailLabel')} placeholder="exemplu@email.com" value={email} onChangeText={setEmail} keyboardType="email-address" />
                 <Input label={t('registerPasswordLabel')} placeholder="******" value={password} onChangeText={setPassword} secureTextEntry />
 
