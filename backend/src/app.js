@@ -13,9 +13,28 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ========== Middleware ==========
-// CORS deschis pentru development (React Native + Expo Go)
-// In productie, inlocuieste cu: cors({ origin: 'https://domeniultau.com' })
-app.use(cors());
+// CORS: in development acceptam orice origine (Expo Go, simulatoare, browsere locale)
+// In productie, setezi ALLOWED_ORIGINS in .env cu URL-urile permise (separate prin virgula)
+// ex: ALLOWED_ORIGINS=https://smartskin-api.onrender.com,https://smartskin.app
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(','). map(o => o.trim())
+    : null;
+
+app.use(cors(
+    allowedOrigins
+        ? {
+            origin: (origin, callback) => {
+                // Permite si request-uri fara origin (aplicatii mobile, Postman, curl)
+                if (!origin || allowedOrigins.includes(origin)) {
+                    callback(null, true);
+                } else {
+                    callback(new Error(`CORS: originea "${origin}" nu este permisa.`));
+                }
+            },
+            credentials: true
+          }
+        : {} // development: deschis total
+));
 app.use(express.json({ limit: '50mb' })); // Marit la 50mb pentru pozele OCR (base64)
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
@@ -23,7 +42,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 const globalLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 100,
-    message: { error: 'Prea multe cereri. Incearca din nou in cateva secunde.' }
+    message: { error: 'Too many requests. Please try again in a few seconds.' }
 });
 app.use(globalLimiter);
 
@@ -36,16 +55,19 @@ app.use((req, res, next) => {
 // ========== Routes ==========
 app.use('/api', routes);
 
-// ========== Swagger API Docs ==========
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'CosmetiSafe API Docs'
-}));
-// Endpoint JSON pentru export specificatie OpenAPI
-app.get('/api-docs.json', (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.send(swaggerSpec);
-});
+// ========== Swagger API Docs (doar in development) ==========
+// In productie (NODE_ENV=production) documentatia API nu este expusa public
+if (process.env.NODE_ENV !== 'production') {
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'CosmetiSafe API Docs'
+    }));
+    // Endpoint JSON pentru export specificatie OpenAPI
+    app.get('/api-docs.json', (req, res) => {
+        res.setHeader('Content-Type', 'application/json');
+        res.send(swaggerSpec);
+    });
+}
 
 // Root endpoint
 app.get('/', (req, res) => {

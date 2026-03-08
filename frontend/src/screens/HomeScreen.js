@@ -8,10 +8,14 @@ export default function HomeScreen({ navigation }) {
     const { colors, t } = useApp();
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-            setUserName(name);
-        });
+        supabase.auth.getUser()
+            .then(({ data, error }) => {
+                if (error || !data?.user) return;
+                const user = data.user;
+                const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
+                setUserName(name);
+            })
+            .catch(() => {}); // fail silent - numele nu e critic pentru UX
     }, []);
 
     const greeting = () => {

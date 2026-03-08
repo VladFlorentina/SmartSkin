@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
+import { AppContext } from '../lib/AppContext';
 
 /**
  * ErrorBoundary - prinde erori neasteptate in componentele React
@@ -27,28 +28,35 @@ export default class ErrorBoundary extends React.Component {
     render() {
         if (this.state.hasError) {
             return (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#FFF1F2' }}>
-                    <Text style={{ fontSize: 48, marginBottom: 16 }}>😵</Text>
-                    <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#881337', textAlign: 'center', marginBottom: 8 }}>
-                        Oops! Ceva nu a mers bine.
-                    </Text>
-                    <Text style={{ fontSize: 14, color: '#9F1239', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
-                        A aparut o eroare neasteptata. Incearca sa reincarci aplicatia.
-                    </Text>
-                    <TouchableOpacity
-                        onPress={this.handleReset}
-                        style={{
-                            backgroundColor: '#FB7185',
-                            paddingHorizontal: 32,
-                            paddingVertical: 14,
-                            borderRadius: 16,
-                        }}
-                    >
-                        <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
-                            Reincearca
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+                <AppContext.Consumer>
+                    {(ctx) => {
+                        const t = ctx?.t ?? ((k) => k);
+                        return (
+                            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#FFF1F2' }}>
+                                <Text style={{ fontSize: 48, marginBottom: 16 }}>😵</Text>
+                                <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#881337', textAlign: 'center', marginBottom: 8 }}>
+                                    {t('errorBoundaryTitle')}
+                                </Text>
+                                <Text style={{ fontSize: 14, color: '#9F1239', textAlign: 'center', marginBottom: 24, lineHeight: 20 }}>
+                                    {t('errorBoundaryMsg')}
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={this.handleReset}
+                                    style={{
+                                        backgroundColor: '#FB7185',
+                                        paddingHorizontal: 32,
+                                        paddingVertical: 14,
+                                        borderRadius: 16,
+                                    }}
+                                >
+                                    <Text style={{ color: 'white', fontWeight: 'bold', fontSize: 16 }}>
+                                        {t('errorBoundaryBtn')}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        );
+                    }}
+                </AppContext.Consumer>
             );
         }
 

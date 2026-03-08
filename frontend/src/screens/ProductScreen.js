@@ -8,7 +8,7 @@ import { useApp } from '../lib/AppContext';
 
 export default function ProductScreen({ navigation, route }) {
     const { barcode, cachedProduct } = route.params;
-    const { t, colors } = useApp();
+    const { t, colors, lang } = useApp();
     // Daca avem date din cache (din Istoric), le folosim imediat
     const [product, setProduct] = useState(
         cachedProduct?.analysis?.ingredientsBreakdown ? cachedProduct : null
@@ -32,7 +32,7 @@ export default function ProductScreen({ navigation, route }) {
             setNotFound(false);
             setIsOffline(false);
             setOcrMetadata(null);
-            const data = await fetchProductDetails(barcode);
+            const data = await fetchProductDetails(barcode, lang);
 
             // Backend-ul returneaza needsOcr=true daca produsul nu a fost analizat inca
             if (data.needsOcr) {
@@ -54,7 +54,7 @@ export default function ProductScreen({ navigation, route }) {
             }
         } catch (error) {
             if (error.isNetworkError) {
-                setIsOffline(true);
+                setIsOffline(error.isTimeoutError ? 'timeout' : 'network');
             } else {
                 console.log('Product not found or error:', error);
                 setNotFound(true);
@@ -83,25 +83,24 @@ export default function ProductScreen({ navigation, route }) {
     if (isOffline) {
         return (
             <Layout className="justify-center items-center px-6">
-                <Text className="text-6xl mb-4">📡</Text>
+                <Text className="text-6xl mb-4">{isOffline === 'timeout' ? '⏳' : '📡'}</Text>
                 <Text className="text-2xl font-bold text-brand-900 text-center mb-3">
-                    Fara Conexiune
+                    {isOffline === 'timeout' ? t('productTimeoutTitle') : t('productOfflineTitle')}
                 </Text>
                 <Text className="text-brand-500 text-center leading-relaxed mb-8 px-4">
-                    Nu am putut contacta serverul.{"\n"}
-                    Asigura-te ca esti conectata la aceeasi retea Wi-Fi ca serverul si incearca din nou.
+                    {isOffline === 'timeout' ? t('productTimeoutMsg') : t('productOfflineMsg')}
                 </Text>
                 <View className="bg-brand-50 border border-brand-100 rounded-2xl p-4 w-full mb-8">
                     <Text className="text-brand-400 text-xs text-center font-mono">
-                        Cod produs: {barcode}
+                        {t('productOfflineBarcodeLabel')} {barcode}
                     </Text>
                 </View>
                 <Button
-                    title="Incearca din nou"
+                    title={t('productOfflineRetry')}
                     onPress={loadProduct}
                 />
                 <Button
-                    title="Inapoi"
+                    title={t('productOfflineBack')}
                     variant="outline"
                     onPress={() => navigation.goBack()}
                 />
@@ -140,7 +139,7 @@ export default function ProductScreen({ navigation, route }) {
 
                     <View className="w-full gap-y-4">
                         <Button
-                            title="📸 Scaneaza Eticheta Ingredientelor"
+                            title={t('productScanLabelBtn')}
                             onPress={() => navigation.replace('ManualAdd', {
                                 barcode: ocrMetadata?.barcode || barcode,
                                 prefillName: ocrMetadata?.name || '',
@@ -148,7 +147,7 @@ export default function ProductScreen({ navigation, route }) {
                             })}
                         />
                         <Button
-                            title="Inapoi la Scanner"
+                            title={t('productBackToScanner')}
                             variant="outline"
                             onPress={() => navigation.goBack()}
                         />
@@ -158,7 +157,17 @@ export default function ProductScreen({ navigation, route }) {
         );
     }
 
-    if (!product) return null;
+    if (!product) {
+        return (
+            <Layout className="justify-center items-center px-6">
+                <Text className="text-4xl mb-4">😕</Text>
+                <Text className="text-lg font-bold text-center mb-6" style={{ color: colors.text }}>
+                    Nu am putut incarca produsul.
+                </Text>
+                <Button title="Inapoi" onPress={() => navigation.goBack()} />
+            </Layout>
+        );
+    }
 
     const safetyScore = product.analysis?.safetyScore || 0;
     const scoreColors = getScoreColor(safetyScore);
@@ -202,7 +211,7 @@ export default function ProductScreen({ navigation, route }) {
                     {/* Safety Score Card - animated ring */}
                     <View className={`p-6 rounded-3xl border ${scoreColors.border} ${scoreColors.bg} items-center mb-8 shadow-sm`}>
                         <Text className={`text-xs font-bold ${scoreColors.text} opacity-70 uppercase tracking-widest mb-5`}>
-                            Scor Siguranta
+                            {t('productScoreLabel')}
                         </Text>
                         <AnimatedScoreRing score={safetyScore} />
                     </View>
@@ -211,7 +220,7 @@ export default function ProductScreen({ navigation, route }) {
                     {product.analysis?.personalWarnings?.length > 0 && (
                         <View className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
                             <Text className="text-rose-700 font-bold text-sm uppercase tracking-widest mb-3">
-                                ⚠️ Alerte Personale
+                                {t('productPersonalAlerts')}
                             </Text>
                             {product.analysis.personalWarnings.map((warning, index) => (
                                 <View key={index} className="flex-row items-start mb-2 last:mb-0">
@@ -223,7 +232,7 @@ export default function ProductScreen({ navigation, route }) {
                             ))}
                             {product.analysis.isPersonalized && product.analysis.baseSafetyScore !== product.analysis.safetyScore && (
                                 <Text className="text-rose-400 text-xs mt-3 italic">
-                                    Scorul a fost ajustat de la {product.analysis.baseSafetyScore} la {product.analysis.safetyScore} pe baza profilului tau.
+                                    {t('productScoreAdjustedPre')}{product.analysis.baseSafetyScore}{t('productScoreAdjustedMid')}{product.analysis.safetyScore}{t('productScoreAdjustedPost')}
                                 </Text>
                             )}
                         </View>
@@ -233,7 +242,7 @@ export default function ProductScreen({ navigation, route }) {
                     {product.analysis?.warnings?.length > 0 && (
                         <View className="bg-amber-50 border border-amber-200 rounded-3xl p-5 mb-6">
                             <Text className="text-amber-700 font-bold text-sm uppercase tracking-widest mb-3">
-                                Avertismente
+                                {t('productWarnings')}
                             </Text>
                             {product.analysis.warnings.map((warning, index) => (
                                 <View key={index} className="flex-row items-start mb-2 last:mb-0">
@@ -252,7 +261,7 @@ export default function ProductScreen({ navigation, route }) {
                             {t('productChatPrompt')}
                         </Text>
                         <Button
-                            title="Intreaba CosmetiBot ✨"
+                            title={t('productChatBtn')}
                             onPress={() => navigation.navigate('Chat', { product })}
                             variant="outline"
                         />
@@ -280,7 +289,7 @@ export default function ProductScreen({ navigation, route }) {
                                         </View>
                                         <View className={`px-3 py-1 rounded-full ${itemColor.bg} border ${itemColor.border}`}>
                                             <Text className={`text-xs font-bold ${itemColor.text}`}>
-                                                {item.riskLevel === 0 ? 'Sigur' : `Nivel ${item.riskLevel}`}
+                                                {item.riskLevel === 0 ? t('productIngredientSafe') : `${t('productIngredientLevel')} ${item.riskLevel}`}
                                             </Text>
                                         </View>
                                     </View>

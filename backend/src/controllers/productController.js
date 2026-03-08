@@ -3,6 +3,7 @@ import { fetchProductMetadata, searchProductsByName } from '../services/openBeau
 import { analyzeToxicity } from '../services/toxicityAnalyzer.js';
 import { extractIngredientsFromImage } from '../services/geminiService.js';
 import { searchMakeupByName } from '../services/makeupApiService.js';
+import { randomUUID } from 'crypto';
 
 /**
  * GET /api/products/search?q=text
@@ -16,10 +17,14 @@ export async function searchProducts(req, res) {
         const { q } = req.query;
 
         if (!q || q.trim().length < 2) {
-            return res.status(400).json({ error: 'Termenul de cautare trebuie sa aiba minim 2 caractere' });
+            return res.status(400).json({ error: 'Search term must be at least 2 characters' });
         }
 
+        // searchText - folosit pentru OBF si Makeup API (text original, fara modificari)
         const searchText = q.trim();
+        // supabaseSearchText - sanitizat pentru a preveni injectia in filtrul PostgREST .or()
+        // Eliminam caracterele speciale din sintaxa PostgREST: (, ), comma, dot, quote, %, ;
+        const supabaseSearchText = searchText.replace(/[(),.'"%;]/g, '');
 
         // Rulam cautarile in paralel pentru viteza maxima
         const [supabaseResults, obfResults, makeupResults] = await Promise.allSettled([
@@ -27,7 +32,7 @@ export async function searchProducts(req, res) {
             supabase
                 .from('products')
                 .select('barcode, name, brand, image_url')
-                .or(`name.ilike.%${searchText}%,brand.ilike.%${searchText}%`)
+                .or(`name.ilike.%${supabaseSearchText}%,brand.ilike.%${supabaseSearchText}%`)
                 .limit(50),
 
             // 2. Open Beauty Facts - skincare
@@ -71,6 +76,28 @@ export async function searchProducts(req, res) {
             }
         }
 
+        // 4. Batch check: marcheaza produsele OBF care exista deja in cache Supabase
+        //    (pot exista in cache dar nu au aparut in query-ul de search dupa nume)
+        const obfBarcodes = combined
+            .filter(p => p.source === 'obf' && p.barcode)
+            .map(p => p.barcode);
+
+        if (obfBarcodes.length > 0) {
+            const { data: cachedBarcodes } = await supabase
+                .from('products')
+                .select('barcode')
+                .in('barcode', obfBarcodes);
+
+            if (cachedBarcodes && cachedBarcodes.length > 0) {
+                const cachedSet = new Set(cachedBarcodes.map(r => r.barcode));
+                for (const p of combined) {
+                    if (p.source === 'obf' && p.barcode && cachedSet.has(p.barcode)) {
+                        p.source = 'cache'; // produsul e deja analizat
+                    }
+                }
+            }
+        }
+
         console.log(`[SEARCH] "${searchText}" -> ${combined.length} rezultate (cache: ${supabaseResults.value?.data?.length || 0}, OBF: ${obfResults.value?.length || 0}, makeup: ${makeupResults.value?.length || 0})`);
 
         return res.json(combined);
@@ -100,6 +127,7 @@ function getUserPreferences(req) {
 export async function getProductByBarcode(req, res) {
     try {
         const { barcode } = req.params;
+        const lang = req.query.lang || 'ro';
 
         if (!barcode || barcode.length < 8) {
             return res.status(400).json({
@@ -123,7 +151,7 @@ export async function getProductByBarcode(req, res) {
 
                 // Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
                 const userPrefs = getUserPreferences(req);
-                const analysis = await analyzeToxicity(cachedProduct.ingredients_list, userPrefs);
+                const analysis = await analyzeToxicity(cachedProduct.ingredients_list, userPrefs, lang);
                 if (userPrefs) console.log(`[PERSONALIZED] Analysis personalized for skin_type=${userPrefs.skin_type}, allergies=${userPrefs.allergies.length}`);
 
                 return res.json({
@@ -142,7 +170,7 @@ export async function getProductByBarcode(req, res) {
         if (obfData?.ingredientsText) {
             console.log(`[OBF] Ingrediente gasite pentru ${barcode} - analizam...`);
             const userPrefs = getUserPreferences(req);
-            const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs);
+            const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs, lang);
 
             // Salvez in cache Supabase cu upsert pentru a evita duplicate
             // la scanari simultane ale aceluiasi produs de catre mai multi utilizatori
@@ -150,8 +178,8 @@ export async function getProductByBarcode(req, res) {
                 .from('products')
                 .upsert({
                     barcode: barcode,
-                    name: obfData.name || 'Produs Necunoscut',
-                    brand: obfData.brand || 'Brand Necunoscut',
+                    name: obfData.name || null,
+                    brand: obfData.brand || null,
                     ingredients_list: obfData.ingredientsText,
                     image_url: obfData.imageUrl,
                     category: obfData.categories || '',
@@ -185,7 +213,7 @@ export async function getProductByBarcode(req, res) {
             name: obfData?.name || null,
             brand: obfData?.brand || null,
             imageUrl: obfData?.imageUrl || null,
-            message: 'Produsul nu a fost analizat inca. Fotografiaza eticheta cu ingredientele!'
+            message: 'Product not yet analyzed. Please photograph the ingredients label!'
         });
 
     } catch (error) {
@@ -329,28 +357,29 @@ export async function getUserHistory(req, res) {
 export async function addManualProduct(req, res) {
     try {
         const { barcode, name, brand, base64Image, mimeType = 'image/jpeg' } = req.body;
+        const lang = req.body.lang || 'ro';
 
         // Validare input
         if (!name || !base64Image) {
-            return res.status(400).json({ error: 'Numele produsului si imaginea cu eticheta sunt obligatorii' });
+            return res.status(400).json({ error: 'Product name and ingredient label image are required' });
         }
 
         // Validare format base64 (verifica ca nu depaseste 10MB decodat)
         const estimatedSizeBytes = (base64Image.length * 3) / 4;
         const maxSizeMB = 10;
         if (estimatedSizeBytes > maxSizeMB * 1024 * 1024) {
-            return res.status(400).json({ error: `Imaginea este prea mare (max ${maxSizeMB}MB)` });
+            return res.status(400).json({ error: `Image is too large (max ${maxSizeMB}MB)` });
         }
 
         // Validare mimeType
         const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!allowedMimeTypes.includes(mimeType)) {
-            return res.status(400).json({ error: 'Format imagine invalid. Acceptam: JPEG, PNG, WebP' });
+            return res.status(400).json({ error: 'Invalid image format. Accepted: JPEG, PNG, WebP' });
         }
 
         // Validare lungime nume
         if (name.trim().length < 2 || name.trim().length > 200) {
-            return res.status(400).json({ error: 'Numele produsului trebuie sa aiba intre 2 si 200 caractere' });
+            return res.status(400).json({ error: 'Product name must be between 2 and 200 characters' });
         }
 
         console.log(`[MANUAL ADD] Procesare imagine pentru produsul: ${name}`);
@@ -362,13 +391,11 @@ export async function addManualProduct(req, res) {
 
         // 2. Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
         const userPrefs = getUserPreferences(req);
-        const analysis = await analyzeToxicity(ingredientsText, userPrefs);
-
-        // 3. Salveaza produsul public in Supabase pentru toti utilizatorii
+        const analysis = await analyzeToxicity(ingredientsText, userPrefs, lang);
         const productDataToSave = {
-            barcode: barcode || `MANUAL-${Date.now()}`, // Genereaza un cod fals daca lipseste
+            barcode: barcode || `MANUAL-${randomUUID()}`, // Genereaza un cod unic garantat daca lipseste
             name: name,
-            brand: brand || 'Necunoscut',
+            brand: brand || null,
             ingredients_list: ingredientsText,
             image_url: null, // Deocamdata nu salvam in bucket poza intreaga
             category: 'manual_entry',
@@ -383,7 +410,7 @@ export async function addManualProduct(req, res) {
 
         if (saveError) {
             console.error('[DB ERROR] Nu am putut salva produsul manual:', saveError);
-            return res.status(500).json({ error: 'Eroare la salvarea in baza de date' });
+            return res.status(500).json({ error: 'Failed to save product to database' });
         }
 
         // 4. Returneaza rezultatul
@@ -397,13 +424,13 @@ export async function addManualProduct(req, res) {
             imageUrl: null,
             analysis,
             source: 'manual_ocr',
-            message: 'Produs analizat si salvat cu succes in cloud!'
+            message: 'Product analyzed and saved successfully!'
         });
 
     } catch (error) {
         console.error('Error in addManualProduct:', error);
         return res.status(500).json({
-            error: error.message || 'Eroare la procesarea produsului manual'
+            error: error.message || 'Error processing manual product'
         });
     }
 }

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ============================================================
@@ -23,7 +24,9 @@ const T = {
         profileSaveBtn: 'Salveaza Profilul',
         profileSaved: 'Salvat!',
         profileSavedMsg: 'Profilul tau a fost actualizat cu succes.',
+        profileErr: 'Eroare',
         profileSaveErr: 'Nu am putut salva profilul. Incearca din nou.',
+        profileDefaultUser: 'Utilizator',
         profileLoadingText: 'Se incarca profilul...',
         profileLogoutTitle: 'Deconectare',
         profileLogoutMsg: 'Esti sigura ca vrei sa te deconectezi?',
@@ -48,6 +51,7 @@ const T = {
         // Chat
         chatSubtitle: 'Asistent AI Dermatologic',
         chatPlaceholder: 'Intreaba ceva...',
+        chatYou: 'Tu',
         chatError: 'Scuze, am intampinat o eroare de conexiune cu serverul meu AI.',
         // Scanner
         scannerPermissionText: 'Avem nevoie de acces la camera pentru a scana produse.',
@@ -65,6 +69,9 @@ const T = {
         scannerCancel: 'Anuleaza',
         errorTitle: 'Eroare',
         errGalleryPerm: 'Avem nevoie de acces la galerie pentru a selecta o poza.',
+        errorBoundaryTitle: 'Oops! Ceva nu a mers bine.',
+        errorBoundaryMsg: 'A aparut o eroare neasteptata. Incearca sa reincarci aplicatia.',
+        errorBoundaryBtn: 'Reincearca',
         // Product
         productLoading: 'Cautam produsul in baza de date... \uD83C\uDF38',
         productNewTitle: 'Produs Nou Detectat!',
@@ -76,6 +83,24 @@ const T = {
         productChatPrompt: 'Ai intrebari despre cum afecteaza acest produs tenul tau?',
         productIngredientsTitle: 'Analiza Ingredientelor',
         productNoAnalysis: 'Analiza detaliata nu este disponibila momentan.',
+        productOfflineTitle: 'Fara Conexiune',
+        productOfflineMsg: 'Nu am putut contacta serverul.\nAsigura-te ca esti conectata la internet si incearca din nou.',
+        productTimeoutTitle: 'Analiza in Curs',
+        productTimeoutMsg: 'Produsul este analizat pentru prima oara si dureaza putin mai mult.\nApasa "Incearca din nou" - va fi instant!',
+        productOfflineBarcodeLabel: 'Cod produs:',
+        productOfflineRetry: 'Incearca din nou',
+        productOfflineBack: 'Inapoi',
+        productScanLabelBtn: '📸 Scaneaza Eticheta Ingredientelor',
+        productBackToScanner: 'Inapoi la Scanner',
+        productScoreLabel: 'Scor Siguranta',
+        productPersonalAlerts: '⚠️ Alerte Personale',
+        productWarnings: 'Avertismente',
+        productIngredientSafe: 'Sigur',
+        productIngredientLevel: 'Nivel',
+        productScoreAdjustedPre: 'Scorul a fost ajustat de la ',
+        productScoreAdjustedMid: ' la ',
+        productScoreAdjustedPost: ' pe baza profilului tau.',
+        productChatBtn: 'Intreaba CosmetiBot ✨',
         // Login
         loginTitle: 'Bine ai revenit!',
         loginSub: 'Conecteaza-te la contul tau SmartSkin',
@@ -84,6 +109,10 @@ const T = {
         loginBtn: 'Autentificare',
         loginNoAccount: 'Nu ai cont? Inregistreaza-te',
         loginErr: 'Eroare de autentificare',
+        loginErrNoEmail: 'Te rugam sa introduci adresa de email.',
+        loginErrInvalidEmail: 'Te rugam sa introduci o adresa de email valida.',
+        loginErrNoPassword: 'Te rugam sa introduci parola.',
+        loginErrNetwork: 'Nu am putut contacta serverul. Verifica conexiunea.',
         // Register
         registerTitle: 'Creeaza Cont',
         registerSub: 'Incepe-ti calatoria spre ingrijire sigura',
@@ -94,6 +123,9 @@ const T = {
         registerBtn: 'Inregistrare',
         registerHasAccount: 'Ai deja cont? Autentifica-te',
         registerErrNoName: 'Te rugam sa introduci numele complet.',
+        registerErrInvalidEmail: 'Te rugam sa introduci o adresa de email valida.',
+        registerErrPasswordShort: 'Parola trebuie sa aiba cel putin 6 caractere.',
+        registerErrNetwork: 'Nu am putut contacta serverul. Verifica conexiunea.',
         registerErr: 'Eroare la inregistrare',
         registerSuccessTitle: 'Succes!',
         registerSuccessMsg: 'Contul a fost creat cu succes. Verifica-ti email-ul pentru confirmare.',
@@ -115,6 +147,8 @@ const T = {
         manualErrNoName: 'Te rog sa introduci numele produsului.',
         manualErrNoPhoto: 'Te rog sa faci o poza la lista de ingrediente.',
         manualErrCamera: 'Avem nevoie de acces la camera pentru a citi ingredientele.',
+        manualErrImagePick: 'Eroare la selectarea imaginii.',
+        manualErrTimeout: 'Analiza a durat prea mult (2 min). Incearca o poza mai clara sau o conexiune mai buna.',
         manualErrGeneric: 'Nu am putut adauga produsul.',
         manualSuccessTitle: 'Succes!',
         manualSuccessMsg: 'Produsul a fost citit de AI si salvat cu succes!',
@@ -178,7 +212,10 @@ const T = {
         searchNoResultsSub: 'Incearca alt nume de produs sau brand.\nDaca il ai la tine, scaneaza eticheta direct!',
         searchResultsFound: 'rezultate gasite',
         searchNoBarcode: 'Fara cod',
+        searchNeedsOcr: 'Necesita scanare',
         searchNoResultsFor: 'Niciun rezultat pentru',
+        searchNoBarcodeTitle: 'Produs fara barcode',
+        searchNoBarcodeMsg: 'Acest produs nu are un cod de bare asociat si nu poate fi analizat direct. Incearca sa il scanezi fizic sau sa il adaugi manual.',
         // AnimatedScoreRing labels
         scoreLabelSafe: 'Sigur',
         scoreLabelModerate: 'Moderat',
@@ -202,7 +239,9 @@ const T = {
         profileSaveBtn: 'Save Profile',
         profileSaved: 'Saved!',
         profileSavedMsg: 'Your profile has been updated successfully.',
+        profileErr: 'Error',
         profileSaveErr: 'Could not save the profile. Please try again.',
+        profileDefaultUser: 'User',
         profileLoadingText: 'Loading profile...',
         profileLogoutTitle: 'Log out',
         profileLogoutMsg: 'Are you sure you want to log out?',
@@ -227,6 +266,7 @@ const T = {
         // Chat
         chatSubtitle: 'AI Dermatology Assistant',
         chatPlaceholder: 'Ask something...',
+        chatYou: 'You',
         chatError: 'Sorry, I encountered a connection error with my AI server.',
         // Scanner
         scannerPermissionText: 'We need camera access to scan products.',
@@ -244,6 +284,9 @@ const T = {
         scannerCancel: 'Cancel',
         errorTitle: 'Error',
         errGalleryPerm: 'We need gallery access to select a photo.',
+        errorBoundaryTitle: 'Oops! Something went wrong.',
+        errorBoundaryMsg: 'An unexpected error occurred. Please try reloading the app.',
+        errorBoundaryBtn: 'Try again',
         // Product
         productLoading: 'Searching for product in the database... \uD83C\uDF38',
         productNewTitle: 'New Product Detected!',
@@ -255,6 +298,24 @@ const T = {
         productChatPrompt: 'Do you have questions about how this product affects your skin?',
         productIngredientsTitle: 'Ingredient Analysis',
         productNoAnalysis: 'Detailed analysis is not available at the moment.',
+        productOfflineTitle: 'No Connection',
+        productOfflineMsg: 'Could not reach the server.\nMake sure you are connected to the internet and try again.',
+        productTimeoutTitle: 'Analysis in Progress',
+        productTimeoutMsg: 'This product is being analyzed for the first time and it takes a little longer.\nPress "Try again" - it will be instant!',
+        productOfflineBarcodeLabel: 'Product code:',
+        productOfflineRetry: 'Try again',
+        productOfflineBack: 'Back',
+        productScanLabelBtn: '📸 Scan Ingredients Label',
+        productBackToScanner: 'Back to Scanner',
+        productScoreLabel: 'Safety Score',
+        productPersonalAlerts: '⚠️ Personal Alerts',
+        productWarnings: 'Warnings',
+        productIngredientSafe: 'Safe',
+        productIngredientLevel: 'Level',
+        productScoreAdjustedPre: 'Score adjusted from ',
+        productScoreAdjustedMid: ' to ',
+        productScoreAdjustedPost: ' based on your profile.',
+        productChatBtn: 'Ask CosmetiBot ✨',
         // Login
         loginTitle: 'Welcome back!',
         loginSub: 'Sign in to your SmartSkin account',
@@ -263,6 +324,10 @@ const T = {
         loginBtn: 'Sign In',
         loginNoAccount: 'No account? Register',
         loginErr: 'Authentication error',
+        loginErrNoEmail: 'Please enter your email address.',
+        loginErrInvalidEmail: 'Please enter a valid email address.',
+        loginErrNoPassword: 'Please enter your password.',
+        loginErrNetwork: 'Could not reach the server. Please check your connection.',
         // Register
         registerTitle: 'Create Account',
         registerSub: 'Start your journey to safe skincare',
@@ -273,6 +338,9 @@ const T = {
         registerBtn: 'Register',
         registerHasAccount: 'Already have an account? Sign in',
         registerErrNoName: 'Please enter your full name.',
+        registerErrInvalidEmail: 'Please enter a valid email address.',
+        registerErrPasswordShort: 'Password must be at least 6 characters.',
+        registerErrNetwork: 'Could not reach the server. Please check your connection.',
         registerErr: 'Registration error',
         registerSuccessTitle: 'Success!',
         registerSuccessMsg: 'Account created successfully. Please check your email for confirmation.',
@@ -294,6 +362,8 @@ const T = {
         manualErrNoName: 'Please enter the product name.',
         manualErrNoPhoto: 'Please take a photo of the ingredients list.',
         manualErrCamera: 'We need camera access to read the ingredients.',
+        manualErrImagePick: 'Error selecting image.',
+        manualErrTimeout: 'Analysis took too long (2 min). Try a clearer photo or a better connection.',
         manualErrGeneric: 'Could not add the product.',
         manualSuccessTitle: 'Success!',
         manualSuccessMsg: 'The product was read by AI and saved successfully!',
@@ -357,7 +427,10 @@ const T = {
         searchNoResultsSub: 'Try a different product name or brand.\nIf you have it with you, scan the label directly!',
         searchResultsFound: 'results found',
         searchNoBarcode: 'No code',
+        searchNeedsOcr: 'Needs scanning',
         searchNoResultsFor: 'No results for',
+        searchNoBarcodeTitle: 'Product without barcode',
+        searchNoBarcodeMsg: 'This product has no associated barcode and cannot be analyzed directly. Try scanning it physically or adding it manually.',
         // AnimatedScoreRing labels
         scoreLabelSafe: 'Safe',
         scoreLabelModerate: 'Moderate',
@@ -409,7 +482,7 @@ export const DARK = {
 // ============================================================
 // Context
 // ============================================================
-const AppContext = createContext(null);
+export const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
     const [lang, setLangState] = useState('ro');
@@ -444,8 +517,12 @@ export function AppProvider({ children }) {
 
     const colors = isDark ? DARK : LIGHT;
 
-    // Avoid flash before prefs load
-    if (!ready) return null;
+    // Avoid flash before prefs load - show branded spinner instead of white screen
+    if (!ready) return (
+        <View style={{ flex: 1, backgroundColor: '#FFF1F2', justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="large" color="#FDA4AF" />
+        </View>
+    );
 
     return (
         <AppContext.Provider value={{ lang, t, setLanguage, isDark, toggleDark, colors }}>

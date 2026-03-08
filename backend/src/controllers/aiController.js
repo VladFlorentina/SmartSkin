@@ -1,22 +1,5 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { supabase } from '../config/supabase.js';
-
-// Initializare Gemini Client (folosind cheia din .env)
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-1.5-flash';
-
-// Detectez erorile de limita de cereri (HTTP 429 / RESOURCE_EXHAUSTED)
-function isRateLimitError(error) {
-    const msg = (error?.message || '').toLowerCase();
-    return (
-        msg.includes('429') ||
-        msg.includes('quota') ||
-        msg.includes('resource_exhausted') ||
-        msg.includes('rate limit') ||
-        msg.includes('ratelimit')
-    );
-}
+import { generateChatWithFallback } from '../services/geminiService.js';
 
 /**
  * POST /api/chat
@@ -33,7 +16,7 @@ export async function sendMessage(req, res) {
         if (!process.env.GEMINI_API_KEY) {
             return res.status(503).json({
                 error: 'AI Service Unavailable',
-                message: 'Serverul nu are configurata cheia Gemini API.'
+                message: 'The server does not have the Gemini API key configured.'
             });
         }
 
@@ -91,33 +74,24 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
             })),
         ];
 
-        // Initializeaza modelul cu fallback automat la atingerea limitei zilnice
-        let responseText;
-        try {
-            const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-            const chat = model.startChat({ history: geminiHistory });
-            const result = await chat.sendMessage(message);
-            responseText = result.response.text();
-        } catch (primaryError) {
-            if (isRateLimitError(primaryError)) {
-                console.warn(`[AI CHAT] ${GEMINI_MODEL} a atins limita. Folosesc modelul de rezerva ${GEMINI_FALLBACK_MODEL}...`);
-                const fallbackModel = genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
-                const fallbackChat = fallbackModel.startChat({ history: geminiHistory });
-                const fallbackResult = await fallbackChat.sendMessage(message);
-                responseText = fallbackResult.response.text();
-            } else {
-                throw primaryError;
-            }
-        }
+        // Trimite mesajul cu fallback automat la atingerea limitei zilnice
+        const responseText = await generateChatWithFallback(geminiHistory, message);
 
-        // Salveaza conversatia in baza de date (daca avem User ID)
+        // Salveaza conversatia in baza de date (fire-and-forget)
+        // NU await - un esec la salvare nu trebuie sa blocheze/distruga raspunsul AI
         if (userId) {
-            await supabase.from('ai_conversations').insert({
-                user_id: userId,
-                product_id: productId || null,
-                message: message,
-                response: responseText
-            });
+            (async () => {
+                try {
+                    await supabase.from('ai_conversations').insert({
+                        user_id: userId,
+                        product_id: productId || null,
+                        message: message,
+                        response: responseText
+                    });
+                } catch (err) {
+                    console.error('[DB] Eroare la salvarea conversatiei:', err.message);
+                }
+            })();
         }
 
         return res.json({
@@ -126,10 +100,11 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
         });
 
     } catch (error) {
-        console.error('Error in AI Chat:', error);
+        console.error('Error in AI Chat:', error.message || error);
         return res.status(500).json({
             error: 'AI Error',
-            message: 'Nu am putut procesa mesajul. Te rog incearca mai tarziu.'
+            message: 'Could not process the message. Please try again later.',
+            detail: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 }

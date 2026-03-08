@@ -11,14 +11,21 @@ const router = express.Router();
 const chatLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10, // Max 10 mesaje AI per minut per IP
-    message: { error: 'Prea multe mesaje catre AI. Asteapta un minut.' }
+    message: { error: 'Too many AI messages. Please wait a minute.' }
 });
 
 // Rate limiter pentru OCR (consuma credite Gemini)
 const ocrLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 5, // Max 5 scanari OCR per minut per IP
-    message: { error: 'Prea multe cereri OCR. Asteapta un minut.' }
+    message: { error: 'Too many OCR requests. Please wait a minute.' }
+});
+
+// Rate limiter pentru cautare produse (face 3 cereri externe in paralel)
+const searchLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 30, // Max 30 cautari per minut per IP
+    message: { error: 'Too many search requests. Please wait a minute.' }
 });
 
 // ========== Product Routes ==========
@@ -85,7 +92,7 @@ const ocrLimiter = rateLimit({
  *         description: Eroare OCR sau server
  */
 // GET cautare produse dupa nume (Supabase cache + OBF + Makeup API)
-router.get('/products/search', searchProducts);
+router.get('/products/search', searchLimiter, searchProducts);
 
 // GET produs dupa barcode - optional auth pentru personalizare analiza
 router.get('/products/:barcode', optionalAuthMiddleware, getProductByBarcode);
@@ -213,63 +220,6 @@ router.get('/history', authMiddleware, getUserHistory);
  *         description: Rate limit depasit (max 10 mesaje/minut)
  */
 router.post('/chat', chatLimiter, authMiddleware, sendMessage);
-
-// ========== Test Endpoint ==========
-
-/**
- * @swagger
- * /test-ingredient:
- *   get:
- *     summary: Testeaza cautarea unui ingredient in baza de date CosIng
- *     description: Endpoint de test/debug. Cauta un ingredient dupa nume (partial match).
- *     tags: [Debug]
- *     parameters:
- *       - in: query
- *         name: name
- *         schema:
- *           type: string
- *           default: GLYCERIN
- *         description: Numele ingredientului de cautat
- *     responses:
- *       200:
- *         description: Rezultate cautare
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 query:
- *                   type: string
- *                 results:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/IngredientBreakdown'
- *                 count:
- *                   type: integer
- */
-router.get('/test-ingredient', async (req, res) => {
-    const { name = 'GLYCERIN' } = req.query;
-
-    try {
-        const { data, error } = await supabase
-            .from('ingredients')
-            .select('inci_name, score, description, "Restriction", "Function"')
-            .ilike('inci_name', `%${name}%`)
-            .limit(5);
-
-        res.json({
-            success: !error,
-            query: name,
-            results: data || [],
-            count: data?.length || 0,
-            error: error?.message || null
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
 
 // ========== Health Check ==========
 

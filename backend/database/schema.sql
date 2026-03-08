@@ -36,12 +36,15 @@ CREATE TABLE IF NOT EXISTS scanned_products (
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   safety_score INTEGER CHECK (safety_score >= 0 AND safety_score <= 100),
   scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  is_favorite BOOLEAN DEFAULT FALSE
+  is_favorite BOOLEAN DEFAULT FALSE,
+  scan_count INTEGER DEFAULT 1 NOT NULL  -- De cate ori a scanat userul acest produs
 );
 
 -- Index pentru queries rapide
 CREATE INDEX IF NOT EXISTS idx_scanned_products_user ON scanned_products(user_id);
 CREATE INDEX IF NOT EXISTS idx_scanned_products_date ON scanned_products(scanned_at DESC);
+-- Unicitate: un user poate avea un produs o singura data in istoric (scan_count creste)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_scanned_products_unique ON scanned_products(user_id, product_id);
 
 -- ========== Tabel: ai_conversations ==========
 -- Istoric conversatii cu chatbot-ul AI
@@ -99,6 +102,11 @@ DROP POLICY IF EXISTS "Users can insert own AI conversations" ON ai_conversation
 CREATE POLICY "Users can insert own AI conversations"
   ON ai_conversations FOR INSERT
   WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own AI conversations" ON ai_conversations;
+CREATE POLICY "Users can delete own AI conversations"
+  ON ai_conversations FOR DELETE
+  USING (auth.uid() = user_id);
 
 -- Products si ingredients sunt publice (read-only pentru toti)
 DROP POLICY IF EXISTS "Public read access to products" ON products;

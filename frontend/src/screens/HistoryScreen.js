@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { fetchUserHistory } from '../lib/api';
 import { useApp } from '../lib/AppContext';
 
 export default function HistoryScreen({ navigation }) {
-    const { t, colors } = useApp();
+    const { t, colors, lang } = useApp();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        loadHistory();
-    }, []);
+    // useFocusEffect re-incarca istoricul de fiecare data cand ecranul devine activ
+    // (la mount initial, la revenire din ProductScreen dupa o scanare noua, etc.)
+    useFocusEffect(
+        useCallback(() => {
+            loadHistory();
+        }, [])
+    );
 
     const loadHistory = async () => {
         try {
@@ -20,7 +25,7 @@ export default function HistoryScreen({ navigation }) {
             const data = await fetchUserHistory();
             setHistory(data);
         } catch (err) {
-            setError(err.message || 'Nu am putut incarca istoricul');
+            setError(err.message || t('historyErrLoad'));
         } finally {
             setLoading(false);
         }
@@ -34,7 +39,8 @@ export default function HistoryScreen({ navigation }) {
 
     const formatDate = (isoString) => {
         const date = new Date(isoString);
-        return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const locale = lang === 'en' ? 'en-GB' : 'ro-RO';
+        return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     };
 
     const renderItem = ({ item }) => {

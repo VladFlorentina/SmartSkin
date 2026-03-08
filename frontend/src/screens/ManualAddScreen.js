@@ -7,14 +7,24 @@ import { API_BASE_URL } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../lib/AppContext';
 
+// Detecteaza tipul MIME real al imaginii dupa extensia URI-ului
+function detectMimeType(uri) {
+    const ext = (uri || '').split('.').pop().toLowerCase().split('?')[0];
+    if (ext === 'png') return 'image/png';
+    if (ext === 'webp') return 'image/webp';
+    if (ext === 'heic' || ext === 'heif') return 'image/jpeg'; // iOS HEIC -> trimis ca JPEG de Expo
+    return 'image/jpeg'; // default sigur
+}
+
 export default function ManualAddScreen({ navigation, route }) {
     const { barcode: originalBarcode, prefillName, prefillBrand } = route.params || {};
     const [name, setName] = useState(prefillName || '');
     const [brand, setBrand] = useState(prefillBrand || '');
     const [imageUri, setImageUri] = useState(null);
     const [base64Image, setBase64Image] = useState(null);
+    const [mimeType, setMimeType] = useState('image/jpeg');
     const [loading, setLoading] = useState(false);
-    const { t, colors } = useApp();
+    const { t, colors, lang } = useApp();
 
     const pickImage = async () => {
         Alert.alert(
@@ -49,8 +59,10 @@ export default function ManualAddScreen({ navigation, route }) {
                     base64: true,
                 });
                 if (!result.canceled) {
-                    setImageUri(result.assets[0].uri);
+                    const uri = result.assets[0].uri;
+                    setImageUri(uri);
                     setBase64Image(result.assets[0].base64);
+                    setMimeType(detectMimeType(uri));
                 }
             } else {
                 const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -65,13 +77,15 @@ export default function ManualAddScreen({ navigation, route }) {
                     base64: true,
                 });
                 if (!result.canceled) {
-                    setImageUri(result.assets[0].uri);
+                    const uri = result.assets[0].uri;
+                    setImageUri(uri);
                     setBase64Image(result.assets[0].base64);
+                    setMimeType(detectMimeType(uri));
                 }
             }
         } catch (err) {
             console.error('ImagePicker error:', err);
-            Alert.alert(t('errorTitle'), err.message || 'Eroare la selectarea imaginii.');
+            Alert.alert(t('errorTitle'), err.message || t('manualErrImagePick'));
         }
     };
 
@@ -85,6 +99,9 @@ export default function ManualAddScreen({ navigation, route }) {
             return;
         }
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
+
         try {
             setLoading(true);
 
@@ -95,23 +112,25 @@ export default function ManualAddScreen({ navigation, route }) {
             // Fetch to our new backend OCR endpoint
             const response = await fetch(`${API_BASE_URL}/products/manual`, {
                 method: 'POST',
+                signal: controller.signal,
                 headers: {
                     'Content-Type': 'application/json',
                     ...authHeader,
                 },
                 body: JSON.stringify({
-                    barcode: originalBarcode, // Salvam codul de bare real in DB
+                    barcode: originalBarcode,
                     name: name.trim(),
                     brand: brand.trim(),
                     base64Image: base64Image,
-                    mimeType: 'image/jpeg',
+                    mimeType: mimeType,
+                    lang: lang,
                 }),
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'A aparut o eroare la salvarea produsului');
+                throw new Error(data.error || t('manualErrGeneric'));
             }
 
             Alert.alert(t('manualSuccessTitle'), t('manualSuccessMsg'));
@@ -122,9 +141,14 @@ export default function ManualAddScreen({ navigation, route }) {
             }
 
         } catch (error) {
-            console.error('Eroare la adaugarea manuala:', error);
-            Alert.alert(t('errorTitle'), error.message || t('manualErrGeneric'));
+            if (error.name === 'AbortError') {
+                Alert.alert(t('errorTitle'), t('manualErrTimeout'));
+            } else {
+                console.error('Eroare la adaugarea manuala:', error);
+                Alert.alert(t('errorTitle'), error.message || t('manualErrGeneric'));
+            }
         } finally {
+            clearTimeout(timeoutId);
             setLoading(false);
         }
     };

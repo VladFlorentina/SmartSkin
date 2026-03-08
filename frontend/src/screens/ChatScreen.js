@@ -19,24 +19,25 @@ export default function ChatScreen({ navigation, route }) {
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const flatListRef = useRef(null);
+    const msgIdRef = useRef(1); // contor atomic pentru ID-uri unice (mesajul de greeting are id '1')
 
     const handleSend = async () => {
         if (!inputText.trim()) return;
 
-        const userMsg = { id: Date.now().toString(), text: inputText.trim(), sender: 'user' };
+        const userMsg = { id: String(++msgIdRef.current), text: inputText.trim(), sender: 'user' };
         setMessages(prev => [...prev, userMsg]);
         setInputText('');
         setIsLoading(true);
 
         try {
-            // Trimitem mesajul + istoricul conversatiei (fara primul mesaj de greeting al AI-ului)
-            const conversationHistory = messages.slice(1);
+            // Trimitem mesajul + istoricul conversatiei (fara primul mesaj de greeting, max 20 mesaje)
+            const conversationHistory = messages.slice(Math.max(1, messages.length - 20));
             const answer = await sendChatMessage(userMsg.text, product, conversationHistory, lang);
 
-            const aiMsg = { id: (Date.now() + 1).toString(), text: answer, sender: 'ai' };
+            const aiMsg = { id: String(++msgIdRef.current), text: answer, sender: 'ai' };
             setMessages(prev => [...prev, aiMsg]);
         } catch (error) {
-            const errorMsg = { id: (Date.now() + 1).toString(), text: t('chatError'), sender: 'ai' };
+            const errorMsg = { id: String(++msgIdRef.current), text: t('chatError'), sender: 'ai' };
             setMessages(prev => [...prev, errorMsg]);
         } finally {
             setIsLoading(false);
@@ -80,7 +81,7 @@ export default function ChatScreen({ navigation, route }) {
                     )}
                 </View>
                 <Text className={`text-[10px] text-brand-300 mt-1 ${isUser ? 'text-right mr-2' : 'ml-2'}`}>
-                    {isUser ? 'Tu' : 'CosmetiBot ✨'}
+                    {isUser ? t('chatYou') : 'CosmetiBot ✨'}
                 </Text>
             </View>
         );
@@ -88,8 +89,8 @@ export default function ChatScreen({ navigation, route }) {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
-            keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             className="flex-1"
             style={{ backgroundColor: colors.bg }}
         >
@@ -129,10 +130,14 @@ export default function ChatScreen({ navigation, route }) {
                 style={{ backgroundColor: colors.header, borderColor: colors.border }}
             >
                 <TextInput
-                    className="flex-1 rounded-3xl px-5 py-3 mr-3"
                     style={{
+                        flex: 1,
+                        borderRadius: 24,
+                        paddingHorizontal: 20,
+                        paddingVertical: 12,
+                        marginRight: 12,
                         backgroundColor: colors.inputBg,
-                        color: colors.inputText,   // explicit - fixes invisible text on Android
+                        color: colors.inputText,
                         borderWidth: 1,
                         borderColor: colors.border,
                         fontSize: 14,

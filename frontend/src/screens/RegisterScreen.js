@@ -14,7 +14,9 @@ export default function RegisterScreen({ navigation }) {
     const { t, colors } = useApp();
 
     async function handleRegister() {
-        if (!fullName) { Alert.alert('Eroare', t('registerErrNoName')); return; }
+        if (!fullName.trim()) { Alert.alert(t('registerErr'), t('registerErrNoName')); return; }
+        if (!email.trim() || !email.includes('@')) { Alert.alert(t('registerErr'), t('registerErrInvalidEmail')); return; }
+        if (password.length < 6) { Alert.alert(t('registerErr'), t('registerErrPasswordShort')); return; }
         setLoading(true);
         try {
             const { error } = await supabase.auth.signUp({
@@ -25,7 +27,7 @@ export default function RegisterScreen({ navigation }) {
             if (error) { Alert.alert(t('registerErr'), error.message); }
             else { Alert.alert(t('registerSuccessTitle'), t('registerSuccessMsg')); }
         } catch (err) {
-            Alert.alert(t('registerErr'), 'Nu am putut contacta serverul. Verifica conexiunea.');
+            Alert.alert(t('registerErr'), t('registerErrNetwork'));
         } finally {
             setLoading(false);
         }

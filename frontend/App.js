@@ -77,9 +77,11 @@ export default function App() {
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center bg-brand-50">
-        <ActivityIndicator size="large" color="#FB7185" />
-      </View>
+      <SafeAreaProvider>
+        <View className="flex-1 justify-center items-center bg-brand-50">
+          <ActivityIndicator size="large" color="#FB7185" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 

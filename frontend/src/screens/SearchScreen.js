@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
     View, Text, TextInput, FlatList, TouchableOpacity,
     ActivityIndicator, Image, Alert
@@ -24,6 +24,7 @@ export default function SearchScreen({ navigation }) {
     const [searched, setSearched] = useState(false);
     const [error, setError] = useState(null);
     const { colors, t } = useApp();
+    const searchIdRef = useRef(0); // pentru a evita race conditions intre cautari rapide
 
     const SOURCE_BADGE = {
         cache:  { label: t('searchBadgeAnalyzed'), bg: 'bg-sage-100', text: 'text-sage-600', border: 'border-sage-200' },
@@ -35,17 +36,22 @@ export default function SearchScreen({ navigation }) {
         const q = query.trim();
         if (q.length < 2) return;
 
+        const currentId = ++searchIdRef.current; // ID unic pentru acest search
+
         setLoading(true);
         setError(null);
         setSearched(true);
 
         try {
             const data = await searchProducts(q);
+            // Ignoram rezultatul daca intre timp a aparut un search mai nou
+            if (currentId !== searchIdRef.current) return;
             setResults(data);
         } catch (err) {
+            if (currentId !== searchIdRef.current) return;
             setError(t('searchError'));
         } finally {
-            setLoading(false);
+            if (currentId === searchIdRef.current) setLoading(false);
         }
     }, [query]);
 
@@ -53,8 +59,8 @@ export default function SearchScreen({ navigation }) {
         if (!item.barcode) {
             // Produsul nu are barcode (ex: din Makeup API) - nu pot naviga la analiza
             Alert.alert(
-                'Produs fara barcode',
-                'Acest produs nu are un cod de bare asociat si nu poate fi analizat direct. Incearca sa il scanezi fizic sau sa il adaugi manual.',
+                t('searchNoBarcodeTitle'),
+                t('searchNoBarcodeMsg'),
                 [{ text: 'OK' }]
             );
             return;
@@ -64,12 +70,18 @@ export default function SearchScreen({ navigation }) {
 
     const renderItem = ({ item }) => {
         const badge = SOURCE_BADGE[item.source] || SOURCE_BADGE.obf;
+        const needsOcr = item.source === 'obf' && item.barcode && (item.safetyScore === null || item.safetyScore === undefined);
         return (
             <TouchableOpacity
                 onPress={() => handleItemPress(item)}
                 activeOpacity={0.75}
                 className="rounded-3xl p-4 mb-3 flex-row items-center shadow-sm"
-                style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                    backgroundColor: colors.card,
+                    borderWidth: needsOcr ? 1.5 : 1,
+                    borderColor: needsOcr ? '#FCA5A5' : colors.border,
+                    opacity: needsOcr ? 0.92 : 1,
+                }}
             >
                 {/* Imagine */}
                 {item.imageUrl ? (
@@ -103,13 +115,25 @@ export default function SearchScreen({ navigation }) {
                         </View>
                         {/* Scor daca exista */}
                         <ScoreBadge score={item.safetyScore} />
+                        {/* Badge OCR necesar */}
+                        {needsOcr && (
+                            <View className="ml-2 bg-rose-50 border border-rose-200 rounded-full px-2 py-0.5 flex-row items-center">
+                                <Text className="text-[10px] font-bold text-rose-400">📸 {t('searchNeedsOcr')}</Text>
+                            </View>
+                        )}
                     </View>
                 </View>
 
                 {/* Arrow sau Not analyzed */}
                 <View className="ml-2">
                     {item.barcode ? (
-                        <Text className="text-brand-300 text-lg">›</Text>
+                        needsOcr ? (
+                            <View className="bg-rose-50 rounded-xl px-2 py-1">
+                                <Text className="text-rose-300 text-[10px] font-medium">📷</Text>
+                            </View>
+                        ) : (
+                            <Text className="text-brand-300 text-lg">›</Text>
+                        )
                     ) : (
                         <View className="bg-brand-50 rounded-xl px-2 py-1">
                             <Text className="text-brand-300 text-[10px] font-medium">{t('searchNoBarcode')}</Text>

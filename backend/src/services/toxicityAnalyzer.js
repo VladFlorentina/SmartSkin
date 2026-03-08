@@ -6,55 +6,65 @@ import { resolveUnknownIngredients } from './geminiService.js';
 // Scopul: evita apeluri AI repetate pentru acelasi ingredient necunoscut.
 // La repornirea serverului se goleste automat (ingredientele inserate in DB
 // vor fi gasite direct la urmatoarea analiza, fara AI).
+// Limita: max 5000 intrari - la depasire se goleste automat (anti memory-leak).
+const AI_CACHE_MAX_SIZE = 5000;
 const aiResolvedCache = new Set();
+
+function addToAiCache(name) {
+    if (aiResolvedCache.size >= AI_CACHE_MAX_SIZE) {
+        console.log(`[AI CACHE] Limita de ${AI_CACHE_MAX_SIZE} intrari atinsa - golesc cache-ul.`);
+        aiResolvedCache.clear();
+    }
+    aiResolvedCache.add(name);
+}
 
 // --- Lista de Ingrediente Controversate ---
 // Ingrediente LEGALE in UE (scor CosIng = 10) dar controversate din punct de vedere
 // stiintific / de mediu / dermatologic. Se aplica CA OVERLAY si pentru ingrediente gasite in DB.
 const COMMERCIAL_WATCHLIST = [
     // Compusi sulfatati
-    { match: 'sulfate',                 riskLevel: 3, category: 'moderate', desc: 'Surfactant puternic. Poate irita pielea si scalpul.' },
+    { match: 'sulfate',                 riskLevel: 3, category: 'moderate', desc: 'Surfactant puternic. Poate irita pielea si scalpul.',                                                                          descEn: 'Strong surfactant. May irritate skin and scalp.' },
     // Compusi PEG / etoxilati (pot contine impuritati: 1,4-dioxan, oxid de etilena)
-    { match: 'peg-',                    riskLevel: 3, category: 'moderate', desc: 'Compus PEG etoxilat. Poate contine impuritati cancerigene (1,4-dioxan). Permeabilizeaza pielea.' },
-    { match: '-eth-',                   riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat (-eth-). Potential impuritati din procesul de fabricatie.' },
-    { match: 'isoceteth',               riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat. Potential impuritati din procesul de fabricatie.' },
-    { match: 'ceteareth',               riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat. Potential impuritati din procesul de fabricatie.' },
-    { match: 'laureth',                 riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat. Potential impuritati din procesul de fabricatie.' },
+    { match: 'peg-',                    riskLevel: 3, category: 'moderate', desc: 'Compus PEG etoxilat. Poate contine impuritati cancerigene (1,4-dioxan). Permeabilizeaza pielea.',                            descEn: 'PEG ethoxylated compound. May contain carcinogenic impurities (1,4-dioxane). Increases skin permeability.' },
+    { match: '-eth-',                   riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat (-eth-). Potential impuritati din procesul de fabricatie.',                                                  descEn: 'Ethoxylated compound (-eth-). Potential impurities from manufacturing process.' },
+    { match: 'isoceteth',               riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat. Potential impuritati din procesul de fabricatie.',                                                           descEn: 'Ethoxylated compound. Potential impurities from manufacturing process.' },
+    { match: 'ceteareth',               riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat. Potential impuritati din procesul de fabricatie.',                                                           descEn: 'Ethoxylated compound. Potential impurities from manufacturing process.' },
+    { match: 'laureth',                 riskLevel: 2, category: 'moderate', desc: 'Compus etoxilat. Potential impuritati din procesul de fabricatie.',                                                           descEn: 'Ethoxylated compound. Potential impurities from manufacturing process.' },
     // Saruri de aluminiu (antiperspirante)
-    { match: 'aluminum chlorohydrate',  riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu antiperspirant. Suspectat perturbator endocrin. Se absoarbe prin piele.' },
-    { match: 'aluminium chlorohydrate', riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu antiperspirant. Suspectat perturbator endocrin. Se absoarbe prin piele.' },
-    { match: 'aluminum chloride',       riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu. Suspectat perturbator endocrin. Iritant.' },
-    { match: 'aluminium chloride',      riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu. Suspectat perturbator endocrin. Iritant.' },
+    { match: 'aluminum chlorohydrate',  riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu antiperspirant. Suspectat perturbator endocrin. Se absoarbe prin piele.',                                   descEn: 'Antiperspirant aluminum salt. Suspected endocrine disruptor. Absorbed through skin.' },
+    { match: 'aluminium chlorohydrate', riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu antiperspirant. Suspectat perturbator endocrin. Se absoarbe prin piele.',                                   descEn: 'Antiperspirant aluminum salt. Suspected endocrine disruptor. Absorbed through skin.' },
+    { match: 'aluminum chloride',       riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu. Suspectat perturbator endocrin. Iritant.',                                                                  descEn: 'Aluminum salt. Suspected endocrine disruptor. Irritant.' },
+    { match: 'aluminium chloride',      riskLevel: 3, category: 'moderate', desc: 'Sare de aluminiu. Suspectat perturbator endocrin. Iritant.',                                                                  descEn: 'Aluminum salt. Suspected endocrine disruptor. Irritant.' },
     // Uleiuri minerale / petrol
-    { match: 'paraffinum liquidum',     riskLevel: 2, category: 'moderate', desc: 'Ulei mineral derivat din petrol. Ocluziv, poate impiedica respiratia pielii. Posibil contaminat cu HAP.' },
-    { match: 'mineral oil',             riskLevel: 2, category: 'moderate', desc: 'Ulei mineral derivat din petrol. Ocluziv, posibil contaminat cu hidrocarburi aromatice policiclice.' },
-    { match: 'petrolatum',              riskLevel: 2, category: 'moderate', desc: 'Vaselina din petrol. Ocluziva. Poate fi contaminata cu PAH (hidrocarburi cancerigene).' },
-    { match: 'paraffin',                riskLevel: 1, category: 'moderate', desc: 'Derivat din petrol. Ocluziv.' },
+    { match: 'paraffinum liquidum',     riskLevel: 2, category: 'moderate', desc: 'Ulei mineral derivat din petrol. Ocluziv, poate impiedica respiratia pielii. Posibil contaminat cu HAP.',                   descEn: 'Petroleum-derived mineral oil. Occlusive, may block skin respiration. Possibly contaminated with PAHs.' },
+    { match: 'mineral oil',             riskLevel: 2, category: 'moderate', desc: 'Ulei mineral derivat din petrol. Ocluziv, posibil contaminat cu hidrocarburi aromatice policiclice.',                      descEn: 'Petroleum-derived mineral oil. Occlusive, possibly contaminated with polycyclic aromatic hydrocarbons.' },
+    { match: 'petrolatum',              riskLevel: 2, category: 'moderate', desc: 'Vaselina din petrol. Ocluziva. Poate fi contaminata cu PAH (hidrocarburi cancerigene).',                                    descEn: 'Petroleum-derived jelly. Occlusive. May be contaminated with PAHs (carcinogenic hydrocarbons).' },
+    { match: 'paraffin',                riskLevel: 1, category: 'moderate', desc: 'Derivat din petrol. Ocluziv.',                                                                                               descEn: 'Petroleum derivative. Occlusive.' },
     // Siliconi ciclici
-    { match: 'siloxane',                riskLevel: 4, category: 'high',     desc: 'Silicon ciclic. Impact negativ sever asupra mediului acvatic. Bioacumulabil.' },
-    { match: 'cyclomethicone',          riskLevel: 3, category: 'moderate', desc: 'Silicon ciclic volatil. Restrictionat partial in UE. Bioacumulabil in mediu.' },
+    { match: 'siloxane',                riskLevel: 4, category: 'high',     desc: 'Silicon ciclic. Impact negativ sever asupra mediului acvatic. Bioacumulabil.',                                              descEn: 'Cyclic silicone. Severe negative impact on aquatic environment. Bioaccumulative.' },
+    { match: 'cyclomethicone',          riskLevel: 3, category: 'moderate', desc: 'Silicon ciclic volatil. Restrictionat partial in UE. Bioacumulabil in mediu.',                                              descEn: 'Volatile cyclic silicone. Partially restricted in the EU. Bioaccumulative in the environment.' },
     // Agenti chelatori
-    { match: 'edta',                    riskLevel: 3, category: 'moderate', desc: 'Agent chelator. Slab biodegradabil, transportor de metale grele in mediu.' },
+    { match: 'edta',                    riskLevel: 3, category: 'moderate', desc: 'Agent chelator. Slab biodegradabil, transportor de metale grele in mediu.',                                                  descEn: 'Chelating agent. Poorly biodegradable, transports heavy metals in the environment.' },
     // Antioxidanti sintetici
-    { match: 'bht',                     riskLevel: 4, category: 'high',     desc: 'Antioxidant sintetic (BHT). Suspectat perturbator endocrin si potential carcinogen.' },
-    { match: 'bha',                     riskLevel: 4, category: 'high',     desc: 'Antioxidant sintetic (BHA). Clasificat posibil carcinogen (IARC). Perturbator endocrin.' },
+    { match: 'bht',                     riskLevel: 4, category: 'high',     desc: 'Antioxidant sintetic (BHT). Suspectat perturbator endocrin si potential carcinogen.',                                      descEn: 'Synthetic antioxidant (BHT). Suspected endocrine disruptor and potential carcinogen.' },
+    { match: 'bha',                     riskLevel: 4, category: 'high',     desc: 'Antioxidant sintetic (BHA). Clasificat posibil carcinogen (IARC). Perturbator endocrin.',                                  descEn: 'Synthetic antioxidant (BHA). Classified as possible carcinogen (IARC). Endocrine disruptor.' },
     // Parfum / Fragrance
-    { match: 'fragrance',               riskLevel: 3, category: 'moderate', desc: 'Amestec nedeclarat de chimicale parfumante. Potential alergen ridicat.' },
-    { match: 'parfum',                  riskLevel: 3, category: 'moderate', desc: 'Amestec nedeclarat de chimicale parfumante. Potential alergen ridicat.' },
+    { match: 'fragrance',               riskLevel: 3, category: 'moderate', desc: 'Amestec nedeclarat de chimicale parfumante. Potential alergen ridicat.',                                                     descEn: 'Undisclosed mixture of fragrance chemicals. High allergenic potential.' },
+    { match: 'parfum',                  riskLevel: 3, category: 'moderate', desc: 'Amestec nedeclarat de chimicale parfumante. Potential alergen ridicat.',                                                     descEn: 'Undisclosed mixture of fragrance chemicals. High allergenic potential.' },
     // Glicoli sintetici
-    { match: 'propylene glycol',        riskLevel: 2, category: 'moderate', desc: 'Glicol sintetic. Iritant potential pentru piele sensibila. Poate penetra bariera cutanata.' },
-    { match: 'butylene glycol',         riskLevel: 1, category: 'moderate', desc: 'Glicol sintetic. In general tolerat, potential iritant in concentratii mari.' },
+    { match: 'propylene glycol',        riskLevel: 2, category: 'moderate', desc: 'Glicol sintetic. Iritant potential pentru piele sensibila. Poate penetra bariera cutanata.',                                descEn: 'Synthetic glycol. Potential irritant for sensitive skin. May penetrate the skin barrier.' },
+    { match: 'butylene glycol',         riskLevel: 1, category: 'moderate', desc: 'Glicol sintetic. In general tolerat, potential iritant in concentratii mari.',                                              descEn: 'Synthetic glycol. Generally well tolerated, potentially irritating at high concentrations.' },
     // Amine
-    { match: 'cocamide mea',            riskLevel: 3, category: 'moderate', desc: 'Amina derivata. Potential iritant si procesare toxica.' },
-    { match: 'cocamide dea',            riskLevel: 4, category: 'high',     desc: 'Amina dietanolamina. Posibil carcinogen (IARC grupa 2B).' },
-    { match: 'triethanolamine',         riskLevel: 2, category: 'moderate', desc: 'Trietanolamina (TEA). Formeaza nitrozamine potential cancerigene in prezenta altor chimicale.' },
+    { match: 'cocamide mea',            riskLevel: 3, category: 'moderate', desc: 'Amina derivata. Potential iritant si procesare toxica.',                                                                     descEn: 'Derived amine. Potentially irritating and toxic in processing.' },
+    { match: 'cocamide dea',            riskLevel: 4, category: 'high',     desc: 'Amina dietanolamina. Posibil carcinogen (IARC grupa 2B).',                                                                 descEn: 'Diethanolamine amine. Possible carcinogen (IARC Group 2B).' },
+    { match: 'triethanolamine',         riskLevel: 2, category: 'moderate', desc: 'Trietanolamina (TEA). Formeaza nitrozamine potential cancerigene in prezenta altor chimicale.',                             descEn: 'Triethanolamine (TEA). Forms potentially carcinogenic nitrosamines in the presence of other chemicals.' },
     // Conservanti controversati
-    { match: 'methylisothiazolinone',   riskLevel: 4, category: 'high',     desc: 'Conservant cu risc foarte ridicat de alergii de contact si neurotoxicitate.' },
-    { match: 'methylchloroisothiazolinone', riskLevel: 4, category: 'high', desc: 'Conservant puternic. Restrictionat in produse leave-on. Alergen de contact major.' },
+    { match: 'methylisothiazolinone',   riskLevel: 4, category: 'high',     desc: 'Conservant cu risc foarte ridicat de alergii de contact si neurotoxicitate.',                                              descEn: 'Preservative with very high risk of contact allergies and neurotoxicity.' },
+    { match: 'methylchloroisothiazolinone', riskLevel: 4, category: 'high', desc: 'Conservant puternic. Restrictionat in produse leave-on. Alergen de contact major.',                                        descEn: 'Strong preservative. Restricted in leave-on products. Major contact allergen.' },
     // Formaldehida si eliberatori
-    { match: 'dmdm hydantoin',          riskLevel: 4, category: 'high',     desc: 'Eliberator de formaldehida. Alergen, potential carcinogen (IARC grupa 1).' },
-    { match: 'imidazolidinyl urea',     riskLevel: 3, category: 'moderate', desc: 'Eliberator de formaldehida. Poate cauza alergii de contact.' },
-    { match: 'quaternium-15',           riskLevel: 4, category: 'high',     desc: 'Eliberator de formaldehida. Alergen major, potential carcinogen.' },
+    { match: 'dmdm hydantoin',          riskLevel: 4, category: 'high',     desc: 'Eliberator de formaldehida. Alergen, potential carcinogen (IARC grupa 1).',                                               descEn: 'Formaldehyde releaser. Allergen, potential carcinogen (IARC Group 1).' },
+    { match: 'imidazolidinyl urea',     riskLevel: 3, category: 'moderate', desc: 'Eliberator de formaldehida. Poate cauza alergii de contact.',                                                               descEn: 'Formaldehyde releaser. May cause contact allergies.' },
+    { match: 'quaternium-15',           riskLevel: 4, category: 'high',     desc: 'Eliberator de formaldehida. Alergen major, potential carcinogen.',                                                         descEn: 'Formaldehyde releaser. Major allergen, potential carcinogen.' },
 ];
 
 // --- Sinonime comerciale -> INCI ---
@@ -341,7 +351,7 @@ function buildDescription(dbDescription, dbFunction) {
  * @param {Object|null} userPreferences - { skin_type: string, allergies: string[] } (optional)
  * @returns {Promise<Object>} - Rezultatul analizei
  */
-export async function analyzeToxicity(ingredientsText, userPreferences = null) {
+export async function analyzeToxicity(ingredientsText, userPreferences = null, lang = 'ro') {
     if (!ingredientsText || ingredientsText.trim() === '') {
         return {
             safetyScore: 0,
@@ -396,7 +406,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
     const rawTokens = cleanedText
         .split(delimiter)
         .map(ing => ing.trim().replace(/\s+/g, ' '))
-        .filter(ing => ing.length > 1);
+        .filter(ing => ing.length > 1 && ing.length <= 80); // Filtram tokeni prea lungi (texte de avertisment, instructiuni, etc.)
 
     const ingredientNames = [];
     for (const token of rawTokens) {
@@ -414,7 +424,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
             safetyScore: 0,
             message: 'Invalid ingredients format',
             ingredientsBreakdown: [],
-            warnings: ['Format invalid pentru lista ingrediente'],
+            warnings: ['Invalid ingredient list format'],
             personalWarnings: [],
             isPersonalized: false
         };
@@ -487,14 +497,23 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
     // Set cu toate variantele - pentru batch query
     const allNamesToQuery = [...new Set(variantsPerIngredient.flat())];
 
-    const { data: dbIngredients, error: dbError } = await supabase
-        .from('ingredients')
-        .select('inci_name, score, description, "Restriction", "Function"')
-        .in('inci_name', allNamesToQuery);
-
-    if (dbError) {
-        console.error('[DB ERROR] Batch query failed:', dbError);
+    // Procesam in chunk-uri de max 100 pentru a evita depasirea limitei de URL (~8KB) a PostgREST.
+    // Un produs cu 100 ingrediente x 8 variante = ~800 termeni -> URL de ~24KB -> query esueaza silentios.
+    const DB_CHUNK_SIZE = 100;
+    const allDbResults = [];
+    for (let i = 0; i < allNamesToQuery.length; i += DB_CHUNK_SIZE) {
+        const chunk = allNamesToQuery.slice(i, i + DB_CHUNK_SIZE);
+        const { data: chunkData, error: chunkError } = await supabase
+            .from('ingredients')
+            .select('inci_name, score, description, "Restriction", "Function"')
+            .in('inci_name', chunk);
+        if (chunkError) {
+            console.error(`[DB ERROR] Chunk query failed (${i}-${i + DB_CHUNK_SIZE}):`, chunkError);
+        } else if (chunkData) {
+            allDbResults.push(...chunkData);
+        }
     }
+    const dbIngredients = allDbResults;
 
     // Cream un Map pentru lookup rapid: INCI_NAME (uppercase) -> ingredient data
     const dbMap = new Map();
@@ -537,11 +556,20 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
             if (toAsk.length > 0) {
                 console.log(`[AI RESOLVE] ${toAsk.length} ingrediente necunoscute trimise la AI:`, toAsk);
 
-                const aiResults = await resolveUnknownIngredients(toAsk);
+                // Procesam in batch-uri de max 30 pentru a evita depasirea limitei de tokeni Gemini.
+                // Un prompt cu 80+ ingrediente poate esua cu "context too large" error.
+                const AI_BATCH_SIZE = 30;
+                const aiResults = [];
+                for (let b = 0; b < toAsk.length; b += AI_BATCH_SIZE) {
+                    const batch = toAsk.slice(b, b + AI_BATCH_SIZE);
+                    console.log(`[AI RESOLVE] Batch ${Math.floor(b / AI_BATCH_SIZE) + 1}/${Math.ceil(toAsk.length / AI_BATCH_SIZE)}: ${batch.length} ingrediente`);
+                    const batchResults = await resolveUnknownIngredients(batch);
+                    aiResults.push(...batchResults);
+                }
 
                 // Marcam toate ca procesate in cache (indiferent de rezultat)
                 for (const name of toAsk) {
-                    aiResolvedCache.add(name.toUpperCase());
+                    addToAiCache(name.toUpperCase());
                 }
 
                 const synonymNamesToQuery = [];
@@ -585,7 +613,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
                                     aliasesToInsert.push({
                                         inci_name: originalName.toUpperCase().trim(),
                                         score: ing.score,
-                                        description: `[AI-ALIAS] Sinonim pentru ${ing.inci_name}. ${ing.description || ''}`.slice(0, 250),
+                                        description: `[AI-ALIAS] Synonym for ${ing.inci_name}. ${ing.description || ''}`.slice(0, 250),
                                         Restriction: ing.Restriction,
                                         Function: ing.Function
                                     });
@@ -614,7 +642,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
                         .map(r => ({
                             inci_name: (r.inci_name || r.input).toUpperCase().trim(),
                             score: (typeof r.score === 'number' && r.score >= -10 && r.score <= 10) ? r.score : 0,
-                            description: `[AI] ${r.description || 'Ingredient evaluat de AI - nu exista in CosIng UE'}`,
+                            description: `[AI] ${r.description || 'Ingredient evaluated by AI - not found in EU CosIng'}`,
                             Restriction: null,
                             Function: r.function || 'UNKNOWN'
                         }));
@@ -680,7 +708,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null) {
             const finalRiskLevel = watchlistMatch ? Math.max(dbRiskLevel, watchlistMatch.riskLevel) : dbRiskLevel;
             const finalCategory = watchlistMatch ? watchlistMatch.category : category;
             const finalDescription = watchlistMatch
-                ? `${dbDescription} | ⚠️ ${watchlistMatch.desc}`
+                ? `${dbDescription} | ⚠️ ${lang === 'en' ? watchlistMatch.descEn : watchlistMatch.desc}`
                 : dbDescription;
 
             ingredientsBreakdown.push({

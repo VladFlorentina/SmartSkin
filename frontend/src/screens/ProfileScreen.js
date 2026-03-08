@@ -43,8 +43,9 @@ export default function ProfileScreen({ navigation }) {
             setLoading(true);
 
             // Ia datele utilizatorului din sesiunea Supabase
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            const { data, error } = await supabase.auth.getUser();
+            if (error || !data?.user) return;
+            const user = data.user;
 
             setUserEmail(user.email || '');
             setUserName(user.user_metadata?.full_name || '');
@@ -78,7 +79,7 @@ export default function ProfileScreen({ navigation }) {
             Alert.alert(t('profileSaved'), t('profileSavedMsg'));
         } catch (error) {
             console.error('Eroare la salvarea profilului:', error);
-            Alert.alert('Eroare', t('profileSaveErr'));
+            Alert.alert(t('profileErr'), t('profileSaveErr'));
         } finally {
             setSaving(false);
         }
@@ -128,7 +129,7 @@ export default function ProfileScreen({ navigation }) {
                         <View className="w-20 h-20 rounded-full items-center justify-center mb-3" style={{ backgroundColor: colors.border }}>
                             <Text className="text-3xl">👤</Text>
                         </View>
-                        <Text className="text-xl font-bold" style={{ color: colors.text }}>{userName || 'Utilizator'}</Text>
+                        <Text className="text-xl font-bold" style={{ color: colors.text }}>{userName || t('profileDefaultUser')}</Text>
                         <Text className="text-sm" style={{ color: colors.textSub }}>{userEmail}</Text>
                     </View>
                 </View>

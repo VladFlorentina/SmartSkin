@@ -1,11 +1,28 @@
 import { supabase } from './supabase';
 import Constants from 'expo-constants';
 
-// IP-ul serverului backend se ia din configurarea Expo (app.json -> extra)
-// Fallback la localhost pentru development
-const BACKEND_IP = Constants.expoConfig?.extra?.backendIp || '192.168.100.26';
-const BACKEND_PORT = Constants.expoConfig?.extra?.backendPort || '3000';
-export const API_BASE_URL = `http://${BACKEND_IP}:${BACKEND_PORT}/api`;
+// URL-ul backend-ului se ia din app.json -> extra
+// Optiunea 1 (recomandata): backendUrl = URL complet (ngrok / Render / Railway)
+//   ex: "backendUrl": "https://abc123.ngrok.io"
+// Optiunea 2 (retea locala): backendIp + backendPort
+//   ex: "backendIp": "192.168.1.137", "backendPort": "3000"
+const extra = Constants.expoConfig?.extra || {};
+
+let API_BASE_URL;
+if (extra.backendUrl) {
+    // URL complet (ngrok / cloud) - prioritate maxima
+    API_BASE_URL = `${extra.backendUrl.replace(/\/$/, '')}/api`;
+} else if (extra.backendIp) {
+    // IP local + port
+    const port = extra.backendPort || '3000';
+    API_BASE_URL = `http://${extra.backendIp}:${port}/api`;
+} else {
+    // Nimic configurat - afisam avertisment clar in loc sa esuam silentios
+    console.error('[CONFIG ERROR] Backend URL nu este configurat in app.json!\nAdauga in app.json -> extra: { "backendUrl": "..." } sau { "backendIp": "...", "backendPort": "3000" }');
+    API_BASE_URL = 'http://localhost:3000/api'; // fallback vizibil in dev
+}
+
+export { API_BASE_URL };
 
 /**
  * Helper to get authorization headers with JWT
@@ -21,16 +38,16 @@ async function getAuthHeaders() {
 
 /**
  * Fetch product details and safety score from the backend
- * Arunca o eroare cu .isNetworkError=true daca serverul nu raspunde in 12 secunde
+ * Arunca o eroare cu .isNetworkError=true daca serverul nu raspunde in 45 secunde
  */
-export async function fetchProductDetails(barcode) {
+export async function fetchProductDetails(barcode, lang = 'ro') {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout - AI resolve poate dura 25-30s
 
     try {
         // Trimitem si auth headers (optional) - daca userul e logat, backend-ul personalizeaza analiza
         const headers = await getAuthHeaders();
-        const response = await fetch(`${API_BASE_URL}/products/${barcode}`, {
+        const response = await fetch(`${API_BASE_URL}/products/${barcode}?lang=${lang}`, {
             method: 'GET',
             headers,
             signal: controller.signal,
@@ -48,8 +65,9 @@ export async function fetchProductDetails(barcode) {
         clearTimeout(timeoutId);
         // Marcam eroarea ca network error daca a expirat timeout-ul sau nu a putut conecta
         if (error.name === 'AbortError' || error.message === 'Network request failed') {
-            const networkError = new Error('Serverul nu raspunde. Verifica conexiunea la retea.');
+            const networkError = new Error('Server not responding. Please check your network connection.');
             networkError.isNetworkError = true;
+            networkError.isTimeoutError = error.name === 'AbortError'; // timeout vs lipsa retea
             throw networkError;
         }
         console.error('API Error:', error);
@@ -64,6 +82,9 @@ export async function fetchProductDetails(barcode) {
  * @param {Array} history - Conversation history [{sender, text}]
  */
 export async function sendChatMessage(message, product = null, history = [], lang = 'ro') {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
     try {
         let contextData = null;
         if (product) {
@@ -88,6 +109,7 @@ export async function sendChatMessage(message, product = null, history = [], lan
 
         const response = await fetch(`${API_BASE_URL}/chat`, {
             method: 'POST',
+            signal: controller.signal,
             headers: {
                 'Content-Type': 'application/json',
                 ...headers,
@@ -104,13 +126,18 @@ export async function sendChatMessage(message, product = null, history = [], lan
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.message || data.error || 'Eroare la comunicarea cu AI-ul.');
+            throw new Error(data.message || data.error || 'Failed to communicate with the AI.');
         }
 
         return data.response; // Textul returnat de Gemini
     } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('AI did not respond in time. Please try again.');
+        }
         console.error('AI Chat Error:', error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
@@ -119,11 +146,14 @@ export async function sendChatMessage(message, product = null, history = [], lan
  * @param {string} query - Search term
  */
 export async function searchProducts(query) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
     try {
         const headers = await getAuthHeaders();
         const response = await fetch(
             `${API_BASE_URL}/products/search?q=${encodeURIComponent(query)}`,
-            { method: 'GET', headers }
+            { method: 'GET', headers, signal: controller.signal }
         );
 
         if (!response.ok) {
@@ -133,8 +163,13 @@ export async function searchProducts(query) {
 
         return await response.json();
     } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('Search took too long. Please try again.');
+        }
         console.error('Search API Error:', error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
@@ -142,11 +177,15 @@ export async function searchProducts(query) {
  * Fetch the current user's scanned product history
  */
 export async function fetchUserHistory() {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
     try {
         const headers = await getAuthHeaders();
         const response = await fetch(`${API_BASE_URL}/history`, {
             method: 'GET',
-            headers
+            headers,
+            signal: controller.signal,
         });
 
         if (!response.ok) {
@@ -156,8 +195,13 @@ export async function fetchUserHistory() {
 
         return await response.json();
     } catch (error) {
+        if (error.name === 'AbortError') {
+            throw new Error('Could not load history. Please check your connection.');
+        }
         console.error('API Error fetching history:', error);
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 

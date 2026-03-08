@@ -13,13 +13,28 @@ export default function LoginScreen({ navigation }) {
     const { t, colors } = useApp();
 
     async function handleLogin() {
+        const cleanEmail = email.trim();
+
+        // Validari locale - evita request-uri inutile la Supabase
+        if (!cleanEmail) {
+            Alert.alert(t('loginErr'), t('loginErrNoEmail'));
+            return;
+        }
+        if (!cleanEmail.includes('@')) {
+            Alert.alert(t('loginErr'), t('loginErrInvalidEmail'));
+            return;
+        }
+        if (!password) {
+            Alert.alert(t('loginErr'), t('loginErrNoPassword'));
+            return;
+        }
+
         setLoading(true);
         try {
-            const cleanEmail = email.trim();
             const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
             if (error) { Alert.alert(t('loginErr'), error.message); }
         } catch (err) {
-            Alert.alert(t('loginErr'), 'Nu am putut contacta serverul. Verifica conexiunea.');
+            Alert.alert(t('loginErr'), t('loginErrNetwork'));
         } finally {
             setLoading(false);
         }

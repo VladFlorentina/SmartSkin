@@ -9,22 +9,43 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
-// Model primar: gemini-3-flash-preview (20 cereri/zi)
-// Model de rezerva: gemini-2.5-flash (20 cereri/zi) - folosit automat la atingerea limitei
+// Model primar: gemini-3-flash-preview
+// Model de rezerva: gemini-2.5-flash - folosit automat la atingerea limitei
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
 
+const GEMINI_TIMEOUT_MS = 90000; // 90 secunde - daca Gemini nu raspunde, eliberam resursa
+
 /**
- * Detecteaza erori de limita de cereri (HTTP 429 / RESOURCE_EXHAUSTED)
+ * Wrapeaza un Promise cu un timeout. Daca promise-ul nu se rezolva in `ms` milisecunde,
+ * respinge cu eroare de timeout pentru a elibera worker-ul Node.js.
  */
-function isRateLimitError(error) {
+function withTimeout(promise, ms = GEMINI_TIMEOUT_MS) {
+    const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Gemini did not respond within ${ms / 1000} seconds. Please try again.`)), ms)
+    );
+    return Promise.race([promise, timeout]);
+}
+
+/**
+ * Detecteaza erori care justifica incercarea modelului de rezerva:
+ * - Rate limit (429 / RESOURCE_EXHAUSTED)
+ * - Model inexistent / indisponibil (404 / NOT_FOUND / INVALID_ARGUMENT)
+ */
+function shouldUseFallback(error) {
     const msg = (error?.message || '').toLowerCase();
     return (
         msg.includes('429') ||
         msg.includes('quota') ||
         msg.includes('resource_exhausted') ||
         msg.includes('rate limit') ||
-        msg.includes('ratelimit')
+        msg.includes('ratelimit') ||
+        msg.includes('not found') ||
+        msg.includes('404') ||
+        msg.includes('invalid_argument') ||
+        msg.includes('not supported') ||
+        msg.includes('model') ||
+        msg.includes('permission')
     );
 }
 
@@ -36,14 +57,40 @@ function isRateLimitError(error) {
 async function generateWithFallback(contentParts) {
     try {
         const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
-        const result = await model.generateContent(contentParts);
+        const result = await withTimeout(model.generateContent(contentParts));
         return result.response.text().trim();
     } catch (primaryError) {
-        if (isRateLimitError(primaryError)) {
-            console.warn(`[GEMINI] ${GEMINI_MODEL} a atins limita zilnica. Folosesc modelul de rezerva ${GEMINI_FALLBACK_MODEL}...`);
+        console.warn(`[GEMINI] Primary model '${GEMINI_MODEL}' failed: ${primaryError.message}`);
+        if (shouldUseFallback(primaryError)) {
+            console.warn(`[GEMINI] Switching to fallback model '${GEMINI_FALLBACK_MODEL}'...`);
             const fallbackModel = genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
-            const result = await fallbackModel.generateContent(contentParts);
+            const result = await withTimeout(fallbackModel.generateContent(contentParts));
             return result.response.text().trim();
+        }
+        throw primaryError;
+    }
+}
+
+/**
+ * Porneste un chat Gemini cu istoric, cu fallback automat pe modelul secundar daca primarul e limitat.
+ * @param {Array} history - Istoricul conversatiei in formatul Gemini [{role, parts}]
+ * @param {string} message - Mesajul curent al utilizatorului
+ * @returns {Promise<string>} - Textul raspunsului
+ */
+export async function generateChatWithFallback(history, message) {
+    try {
+        const model = genAI.getGenerativeModel({ model: GEMINI_MODEL });
+        const chat = model.startChat({ history });
+        const result = await withTimeout(chat.sendMessage(message));
+        return result.response.text();
+    } catch (primaryError) {
+        console.warn(`[GEMINI CHAT] Primary model '${GEMINI_MODEL}' failed: ${primaryError.message}`);
+        if (shouldUseFallback(primaryError)) {
+            console.warn(`[GEMINI CHAT] Switching to fallback model '${GEMINI_FALLBACK_MODEL}'...`);
+            const fallbackModel = genAI.getGenerativeModel({ model: GEMINI_FALLBACK_MODEL });
+            const fallbackChat = fallbackModel.startChat({ history });
+            const result = await withTimeout(fallbackChat.sendMessage(message));
+            return result.response.text();
         }
         throw primaryError;
     }
@@ -84,13 +131,13 @@ export async function extractIngredientsFromImage(base64Image, mimeType) {
         const text = await generateWithFallback([prompt, ...imageParts]);
 
         if (text === "NO_INGREDIENTS_FOUND") {
-            throw new Error('Nu am putut detecta nicio lista de ingrediente in poza trimisa.');
+            throw new Error('Could not detect any ingredients list in the submitted photo.');
         }
 
         return text;
     } catch (error) {
         console.error('Error in extractIngredientsFromImage:', error);
-        throw new Error(error.message || 'Eroare la procesarea imaginii cu Inteligenta Artificiala.');
+        throw new Error(error.message || 'Error processing image with Artificial Intelligence.');
     }
 }
 
