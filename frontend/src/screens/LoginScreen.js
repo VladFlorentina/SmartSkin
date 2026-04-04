@@ -10,7 +10,7 @@ export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
-    const { t, colors } = useApp();
+    const { t, colors, setIsGuest } = useApp();
 
     async function handleLogin() {
         const cleanEmail = email.trim();
@@ -33,6 +33,7 @@ export default function LoginScreen({ navigation }) {
         try {
             const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
             if (error) { Alert.alert(t('loginErr'), error.message); }
+            else { setIsGuest(false); }
         } catch (err) {
             Alert.alert(t('loginErr'), t('loginErrNetwork'));
         } finally {
@@ -72,6 +73,13 @@ export default function LoginScreen({ navigation }) {
                     <Button title={t('loginBtn')} onPress={handleLogin} loading={loading} />
                     <View className="mt-4">
                         <Button title={t('loginNoAccount')} onPress={() => navigation.navigate('Register')} variant="ghost" />
+                    </View>
+                    <View className="mt-2 border-t pt-4" style={{ borderColor: colors.border }}>
+                        <Button 
+                            title={t('loginGuest') || "Continua ca Vizitator"} 
+                            onPress={() => setIsGuest(true)} 
+                            variant="outline" 
+                        />
                     </View>
                 </View>
             </View>

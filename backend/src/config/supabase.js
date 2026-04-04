@@ -14,7 +14,7 @@ if (!supabaseUrl || !supabaseKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Test connection - verifica accesul la tabelul ingredients (CosIng ~30,000 ingrediente)
+// Test connection - ver accesul la tabelul ingredients 
 export async function testConnection() {
   try {
     const { count, error } = await supabase

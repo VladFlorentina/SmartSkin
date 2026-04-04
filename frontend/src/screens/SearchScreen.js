@@ -32,8 +32,27 @@ export default function SearchScreen({ navigation }) {
         makeup: { label: t('searchBadgeMakeup'), bg: 'bg-blush-100', text: 'text-brand-500', border: 'border-blush-200' },
     };
 
-    const handleSearch = useCallback(async () => {
-        const q = query.trim();
+    const handleSearchChange = (text) => {
+        setQuery(text);
+        
+        // Clear orice timer anterior pentru autocomplete
+        if (window.searchTimeout) {
+            clearTimeout(window.searchTimeout);
+        }
+        
+        // Seteaza noul timer (debounce de 400ms)
+        if (text.trim().length >= 2) {
+            window.searchTimeout = setTimeout(() => {
+                handleSearch(text);
+            }, 400);
+        } else {
+            setResults([]);
+            setSearched(false);
+        }
+    };
+
+    const handleSearch = useCallback(async (textToSearch) => {
+        const q = (textToSearch || query).trim();
         if (q.length < 2) return;
 
         const currentId = ++searchIdRef.current; // ID unic pentru acest search
@@ -172,8 +191,8 @@ export default function SearchScreen({ navigation }) {
                         placeholder={t('searchPlaceholder')}
                         placeholderTextColor={colors.placeholder}
                         value={query}
-                        onChangeText={setQuery}
-                        onSubmitEditing={handleSearch}
+                        onChangeText={handleSearchChange}
+                        onSubmitEditing={() => handleSearch(query)}
                         returnKeyType="search"
                         autoCapitalize="none"
                     />

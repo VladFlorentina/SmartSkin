@@ -7,7 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { supabase } from './src/lib/supabase';
 import { NativeWindStyleSheet } from "nativewind";
 import ErrorBoundary from './src/components/ErrorBoundary';
-import { AppProvider } from './src/lib/AppContext';
+import { AppProvider, useApp } from './src/lib/AppContext';
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -55,6 +55,15 @@ function AppNavigator() {
   );
 }
 
+function RootNavigator({ session }) {
+  const { isGuest } = useApp();
+  return (
+    <NavigationContainer>
+      {(session && session.user) || isGuest ? <AppNavigator /> : <AuthNavigator />}
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -89,9 +98,7 @@ export default function App() {
     <SafeAreaProvider>
       <AppProvider>
         <ErrorBoundary>
-          <NavigationContainer>
-            {session && session.user ? <AppNavigator /> : <AuthNavigator />}
-          </NavigationContainer>
+          <RootNavigator session={session} />
         </ErrorBoundary>
       </AppProvider>
     </SafeAreaProvider>

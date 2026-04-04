@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 
-// Verificare preventiva - evita crash-uri criptice la startup
+
 if (!supabaseUrl || !supabaseAnonKey) {
     console.error(
         '[SUPABASE] Lipsesc variabilele de mediu EXPO_PUBLIC_SUPABASE_URL si/sau EXPO_PUBLIC_SUPABASE_ANON_KEY.\n' +

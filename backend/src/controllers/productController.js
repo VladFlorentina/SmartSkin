@@ -20,13 +20,13 @@ export async function searchProducts(req, res) {
             return res.status(400).json({ error: 'Search term must be at least 2 characters' });
         }
 
-        // searchText - folosit pentru OBF si Makeup API (text original, fara modificari)
+        // searchText - folosit pentru OBF si Makeup API 
         const searchText = q.trim();
         // supabaseSearchText - sanitizat pentru a preveni injectia in filtrul PostgREST .or()
-        // Eliminam caracterele speciale din sintaxa PostgREST: (, ), comma, dot, quote, %, ;
+        
         const supabaseSearchText = searchText.replace(/[(),.'"%;]/g, '');
 
-        // Rulam cautarile in paralel pentru viteza maxima
+
         const [supabaseResults, obfResults, makeupResults] = await Promise.allSettled([
             // 1. Cache Supabase - produse deja analizate (cautam dupa nume SAU brand)
             supabase
@@ -54,13 +54,13 @@ export async function searchProducts(req, res) {
                     brand: p.brand,
                     barcode: p.barcode,
                     imageUrl: p.image_url,
-                    safetyScore: null, // Nu recalculam scorul la search pentru viteza
+                    safetyScore: null, 
                     source: 'cache',
                 });
             }
         }
 
-        // 2. Adauga rezultate OBF (fara duplicate dupa barcode)
+        
         if (obfResults.status === 'fulfilled') {
             for (const p of obfResults.value) {
                 if (p.barcode && seenBarcodes.has(p.barcode)) continue;
@@ -69,15 +69,14 @@ export async function searchProducts(req, res) {
             }
         }
 
-        // 3. Adauga rezultate Makeup API
+      
         if (makeupResults.status === 'fulfilled') {
             for (const p of makeupResults.value) {
                 combined.push(p);
             }
         }
 
-        // 4. Batch check: marcheaza produsele OBF care exista deja in cache Supabase
-        //    (pot exista in cache dar nu au aparut in query-ul de search dupa nume)
+        
         const obfBarcodes = combined
             .filter(p => p.source === 'obf' && p.barcode)
             .map(p => p.barcode);
@@ -92,7 +91,7 @@ export async function searchProducts(req, res) {
                 const cachedSet = new Set(cachedBarcodes.map(r => r.barcode));
                 for (const p of combined) {
                     if (p.source === 'obf' && p.barcode && cachedSet.has(p.barcode)) {
-                        p.source = 'cache'; // produsul e deja analizat
+                        p.source = 'cache';
                     }
                 }
             }
@@ -143,7 +142,7 @@ export async function getProductByBarcode(req, res) {
             .single();
 
         if (cachedProduct && !cacheError) {
-            // Daca produsul este pushe in cache dar nu are ingrediente (fantoma) il ignoram
+            // Daca produsul este pushe in cache dar nu are ingrediente il ignoram
             if (!cachedProduct.ingredients_list || cachedProduct.ingredients_list.trim() === '') {
                 console.log(`[WARN] Product found in cache but has ZERO ingredients: ${barcode}. Ignoring cache...`);
             } else {
@@ -162,18 +161,17 @@ export async function getProductByBarcode(req, res) {
             }
         }
 
-        // 2. Incearca OBF pentru metadata (non-blocking, cu timeout scurt)
+        
         console.log(`[OBF] Cautam metadata pentru: ${barcode}`);
         const obfData = await fetchProductMetadata(barcode, 3000);
 
-        // 3. Daca OBF a gasit ingrediente -> analizeaza, salveaza in cache, returneaza
+        
         if (obfData?.ingredientsText) {
             console.log(`[OBF] Ingrediente gasite pentru ${barcode} - analizam...`);
             const userPrefs = getUserPreferences(req);
             const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs, lang);
 
-            // Salvez in cache Supabase cu upsert pentru a evita duplicate
-            // la scanari simultane ale aceluiasi produs de catre mai multi utilizatori
+            
             const { data: savedProduct, error: saveError } = await supabase
                 .from('products')
                 .upsert({
@@ -238,7 +236,7 @@ export async function saveToHistory(req, res) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // Verifica daca produsul exista
+        
         let productDbId = productId;
 
         if (!productDbId && barcode) {
@@ -255,7 +253,7 @@ export async function saveToHistory(req, res) {
             return res.status(400).json({ error: 'Product not found' });
         }
 
-        // Check if this product already exists in the user's history
+        
         const { data: existing, error: fetchError } = await supabase
             .from('scanned_products')
             .select('id, scan_count')
@@ -271,7 +269,7 @@ export async function saveToHistory(req, res) {
         let data, error;
 
         if (existing) {
-            // Product already in history — update timestamp, score and increment scan_count
+            
             ({ data, error } = await supabase
                 .from('scanned_products')
                 .update({
@@ -283,7 +281,7 @@ export async function saveToHistory(req, res) {
                 .select()
                 .single());
         } else {
-            // First time scanning this product — insert with scan_count = 1
+            
             ({ data, error } = await supabase
                 .from('scanned_products')
                 .insert({
@@ -359,45 +357,45 @@ export async function addManualProduct(req, res) {
         const { barcode, name, brand, base64Image, mimeType = 'image/jpeg' } = req.body;
         const lang = req.body.lang || 'ro';
 
-        // Validare input
+        
         if (!name || !base64Image) {
             return res.status(400).json({ error: 'Product name and ingredient label image are required' });
         }
 
-        // Validare format base64 (verifica ca nu depaseste 10MB decodat)
+        
         const estimatedSizeBytes = (base64Image.length * 3) / 4;
         const maxSizeMB = 10;
         if (estimatedSizeBytes > maxSizeMB * 1024 * 1024) {
             return res.status(400).json({ error: `Image is too large (max ${maxSizeMB}MB)` });
         }
 
-        // Validare mimeType
+        
         const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!allowedMimeTypes.includes(mimeType)) {
             return res.status(400).json({ error: 'Invalid image format. Accepted: JPEG, PNG, WebP' });
         }
 
-        // Validare lungime nume
+        
         if (name.trim().length < 2 || name.trim().length > 200) {
             return res.status(400).json({ error: 'Product name must be between 2 and 200 characters' });
         }
 
         console.log(`[MANUAL ADD] Procesare imagine pentru produsul: ${name}`);
 
-        // 1. Extrage ingredientele din poza folosind Gemini (OCR)
+        
         const ingredientsText = await extractIngredientsFromImage(base64Image, mimeType);
 
         console.log(`[OCR SUCCESS] Ingrediente extrase: ${ingredientsText.substring(0, 100)}...`);
 
-        // 2. Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
+        
         const userPrefs = getUserPreferences(req);
         const analysis = await analyzeToxicity(ingredientsText, userPrefs, lang);
         const productDataToSave = {
-            barcode: barcode || `MANUAL-${randomUUID()}`, // Genereaza un cod unic garantat daca lipseste
+            barcode: barcode || `MANUAL-${randomUUID()}`, 
             name: name,
             brand: brand || null,
             ingredients_list: ingredientsText,
-            image_url: null, // Deocamdata nu salvam in bucket poza intreaga
+            image_url: null, 
             category: 'manual_entry',
             last_updated: new Date().toISOString()
         };
@@ -414,7 +412,7 @@ export async function addManualProduct(req, res) {
         }
 
         // 4. Returneaza rezultatul
-        // Folosesc cheia ingredients_list (consistent cu raspunsul din getProductByBarcode)
+        // Folosesc cheia ingredients_list 
         // pentru ca ProductScreen si ChatScreen sa citeasca corect ingredientele
         return res.json({
             barcode: savedProduct.barcode,

@@ -17,7 +17,7 @@ export default class ErrorBoundary extends React.Component {
     }
 
     componentDidCatch(error, errorInfo) {
-        // Aici se pot loga erorile catre un serviciu extern (ex: Sentry)
+        
         console.error('[ErrorBoundary] Eroare prinsa:', error, errorInfo);
     }
 
@@ -33,7 +33,6 @@ export default class ErrorBoundary extends React.Component {
                         const t = ctx?.t ?? ((k) => k);
                         return (
                             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24, backgroundColor: '#FFF1F2' }}>
-                                <Text style={{ fontSize: 48, marginBottom: 16 }}>😵</Text>
                                 <Text style={{ fontSize: 22, fontWeight: 'bold', color: '#881337', textAlign: 'center', marginBottom: 8 }}>
                                     {t('errorBoundaryTitle')}
                                 </Text>

@@ -9,16 +9,16 @@ export const optionalAuthMiddleware = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return next(); // Nu e niciun token - continua fara user
+            return next(); 
         }
         const token = authHeader.split(' ')[1];
         const { data: { user }, error } = await supabase.auth.getUser(token);
         if (!error && user) {
-            req.user = user; // Injecteaza userul daca token-ul e valid
+            req.user = user; 
         }
         next();
     } catch {
-        next(); // Orice eroare -> continua fara user
+        next(); 
     }
 };
 
@@ -32,7 +32,7 @@ export const authMiddleware = async (req, res, next) => {
 
         const token = authHeader.split(' ')[1];
 
-        // Decodificam token-ul folosind instanta Supabase de pe server
+       
         const { data: { user }, error } = await supabase.auth.getUser(token);
 
         if (error || !user) {
@@ -40,7 +40,7 @@ export const authMiddleware = async (req, res, next) => {
             return res.status(401).json({ error: 'Unauthorized: Invalid token' });
         }
 
-        // Injectam datele utilizatorului in request pentru a fi folosite in controllere
+        
         req.user = user;
         next();
 

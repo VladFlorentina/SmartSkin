@@ -2,26 +2,26 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { supabase } from '../config/supabase.js';
 import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct, searchProducts } from '../controllers/productController.js';
-import { sendMessage } from '../controllers/aiController.js';
+import { sendMessage, getChatHistory } from '../controllers/aiController.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Rate limiter strict pentru AI chat (consuma credite Gemini)
+// Rate limiter strict pentru AI chat 
 const chatLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 10, // Max 10 mesaje AI per minut per IP
     message: { error: 'Too many AI messages. Please wait a minute.' }
 });
 
-// Rate limiter pentru OCR (consuma credite Gemini)
+// Rate limiter pentru OCR 
 const ocrLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 5, // Max 5 scanari OCR per minut per IP
     message: { error: 'Too many OCR requests. Please wait a minute.' }
 });
 
-// Rate limiter pentru cautare produse (face 3 cereri externe in paralel)
+// Rate limiter pentru cautare produse face 3 cereri externe in paralel
 const searchLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 30, // Max 30 cautari per minut per IP
@@ -220,6 +220,7 @@ router.get('/history', authMiddleware, getUserHistory);
  *         description: Rate limit depasit (max 10 mesaje/minut)
  */
 router.post('/chat', chatLimiter, authMiddleware, sendMessage);
+router.get('/chat/history/:productId', authMiddleware, getChatHistory);
 
 // ========== Health Check ==========
 

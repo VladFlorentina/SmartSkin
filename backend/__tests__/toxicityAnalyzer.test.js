@@ -28,9 +28,9 @@ const {
     COMMERCIAL_WATCHLIST
 } = _testExports;
 
-// =====================================================================
+
 // scoreToRiskLevel - Conversia scorului din baza de date in nivel de risc
-// =====================================================================
+
 describe('scoreToRiskLevel()', () => {
     test('score -10 (interzis UE) -> risk level 5', () => {
         expect(scoreToRiskLevel(-10)).toBe(5);
@@ -72,9 +72,9 @@ describe('scoreToRiskLevel()', () => {
     });
 });
 
-// =====================================================================
+
 // getCategoryFromDescription - Categorizarea ingredientelor
-// =====================================================================
+
 describe('getCategoryFromDescription()', () => {
     test('score -10 -> banned', () => {
         expect(getCategoryFromDescription(-10, 'anything')).toBe('banned');
@@ -113,9 +113,9 @@ describe('getCategoryFromDescription()', () => {
     });
 });
 
-// =====================================================================
+
 // buildDescription - Generarea descrierilor user-friendly
-// =====================================================================
+
 describe('buildDescription()', () => {
     test('combina descrierea si functia ingredientului', () => {
         const result = buildDescription('Safe ingredient, no restrictions', 'SKIN CONDITIONING, EMOLLIENT');
@@ -141,9 +141,9 @@ describe('buildDescription()', () => {
     });
 });
 
-// =====================================================================
+
 // calculateSafetyScore - Algoritmul principal de scoring
-// =====================================================================
+
 describe('calculateSafetyScore()', () => {
     test('lista goala -> scor 0', () => {
         expect(calculateSafetyScore([])).toBe(0);
@@ -170,19 +170,17 @@ describe('calculateSafetyScore()', () => {
     });
 
     test('pozitia in lista afecteaza penalizarea (concentratie INCI)', () => {
-        // 5 ingrediente riskLevel 2 pe primele 5 pozitii (multiplier 1.5)
-        // Penalizare: 5 x (3 x 1.5) = 22.5, scor = 77.5 (sub cap-ul de 85)
+        
         const riskyFirst = Array(5).fill({ name: 'RISKY', riskLevel: 2 });
 
-        // 10 ingrediente safe + apoi 5 riskLevel 2 pe pozitii 10+ (multiplier 0.6)
-        // Penalizare: 5 x (3 x 0.6) = 9, scor = 91, dar capped la 85
+        
         const safe = Array(10).fill({ name: 'SAFE', riskLevel: 0 });
         const riskyLast = [...safe, ...Array(5).fill({ name: 'RISKY', riskLevel: 2 })];
 
         const scoreFirst = calculateSafetyScore(riskyFirst);
         const scoreLast = calculateSafetyScore(riskyLast);
 
-        // Ingredientele rele pe pozitii cu concentratie mare penalizeaza mai mult
+    
         expect(scoreFirst).toBeLessThan(scoreLast);
     });
 
@@ -203,7 +201,7 @@ describe('calculateSafetyScore()', () => {
         const scoreTwoBad = calculateSafetyScore(twoBad);
         const scoreFourBad = calculateSafetyScore(fourBad);
 
-        // 4 ingrediente rele trebuie sa fie semnificativ mai rau decat 2
+        
         expect(scoreFourBad).toBeLessThan(scoreTwoBad);
     });
 
@@ -213,15 +211,14 @@ describe('calculateSafetyScore()', () => {
     });
 
     test('scorul nu scade sub 0', () => {
-        // Multe ingrediente extremly risky
         const allBanned = Array(10).fill({ name: 'BAD', riskLevel: 5 });
         expect(calculateSafetyScore(allBanned)).toBeGreaterThanOrEqual(0);
     });
 });
 
-// =====================================================================
+
 // generateWarnings - Generarea avertismentelor
-// =====================================================================
+
 describe('generateWarnings()', () => {
     test('ingrediente interzise genereaza warning cu INTERZISE', () => {
         const ingredients = [
@@ -267,9 +264,9 @@ describe('generateWarnings()', () => {
     });
 });
 
-// =====================================================================
+
 // getRiskSummary - Mesaj sumar bazat pe scor
-// =====================================================================
+
 describe('getRiskSummary()', () => {
     test('scor >= 80 -> "sigur"', () => {
         expect(getRiskSummary(80)).toContain('sigur');
@@ -297,9 +294,9 @@ describe('getRiskSummary()', () => {
     });
 });
 
-// =====================================================================
+
 // checkCommercialWatchlist - Detectia ingredientelor controversate
-// =====================================================================
+
 describe('checkCommercialWatchlist()', () => {
     test('detecteaza Sodium Lauryl Sulfate (contine "sulfate")', () => {
         const result = checkCommercialWatchlist('Sodium Lauryl Sulfate');

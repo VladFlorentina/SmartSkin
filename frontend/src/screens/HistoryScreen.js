@@ -5,7 +5,7 @@ import { fetchUserHistory } from '../lib/api';
 import { useApp } from '../lib/AppContext';
 
 export default function HistoryScreen({ navigation }) {
-    const { t, colors, lang } = useApp();
+    const { t, colors, lang, isGuest, setIsGuest } = useApp();
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -14,8 +14,8 @@ export default function HistoryScreen({ navigation }) {
     // (la mount initial, la revenire din ProductScreen dupa o scanare noua, etc.)
     useFocusEffect(
         useCallback(() => {
-            loadHistory();
-        }, [])
+            if (!isGuest) loadHistory();
+        }, [isGuest])
     );
 
     const loadHistory = async () => {
@@ -30,6 +30,32 @@ export default function HistoryScreen({ navigation }) {
             setLoading(false);
         }
     };
+
+    if (isGuest) {
+        return (
+            <View className="flex-1 justify-center items-center p-8" style={{ backgroundColor: colors.bg }}>
+                <View className="bg-brand-50 w-40 h-40 rounded-full items-center justify-center mb-6">
+                    <Text className="text-6xl">🔒</Text>
+                </View>
+                <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
+                    {lang === 'en' ? "Account Required" : "Cont Necesar"}
+                </Text>
+                <Text className="text-center font-medium mb-8 leading-relaxed" style={{ color: colors.textSub }}>
+                    {lang === 'en' 
+                        ? "To save your product history and get personalized insights, please register for a free account!" 
+                        : "Pentru a salva istoricul și a primi recomandări personalizate, creează un cont gratuit!"}
+                </Text>
+                <TouchableOpacity 
+                    className="bg-brand-500 py-4 px-8 rounded-full shadow-sm"
+                    onPress={() => setIsGuest(false)}
+                >
+                    <Text className="text-white font-bold text-base">
+                        {lang === 'en' ? "Create Account" : "Creează Cont"}
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     const getScoreIndicator = (score) => {
         if (score >= 80) return { emoji: '🌱', color: 'text-emerald-500', bg: 'bg-emerald-50' };
@@ -46,7 +72,6 @@ export default function HistoryScreen({ navigation }) {
     const renderItem = ({ item }) => {
         const scoreInfo = getScoreIndicator(item.safety_score);
         const productData = item.products || {};
-        // scan_count badge: only shown when product was accessed more than once
         const scanCount = item.scan_count || 1;
 
         return (
@@ -139,14 +164,26 @@ export default function HistoryScreen({ navigation }) {
                     </TouchableOpacity>
                 </View>
             ) : history.length === 0 ? (
-                <View className="flex-1 justify-center items-center px-6">
-                    <Text className="text-5xl mb-4">📸</Text>
-                    <Text className="font-medium text-center text-lg" style={{ color: colors.text }}>
-                        {t('historyEmpty')}
+                <View className="flex-1 justify-center items-center p-8">
+                    <View className="bg-brand-50 w-40 h-40 rounded-full items-center justify-center mb-6">
+                        <Text className="text-6xl">✨🧴</Text>
+                    </View>
+                    <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
+                        {lang === 'en' ? "Your history is empty" : "Istoricul tău este gol momentan"}
                     </Text>
-                    <Text className="text-center mt-2" style={{ color: colors.textSub }}>
-                        {t('historyEmptySub')}
+                    <Text className="text-center font-medium mb-8 leading-relaxed" style={{ color: colors.textSub }}>
+                        {lang === 'en' 
+                            ? "Scan your first cosmetic product to start building your safety profile and get insights!" 
+                            : "Scanează primul tău produs cosmetic pentru a începe să îți construiești profilul de siguranță!"}
                     </Text>
+                    <TouchableOpacity 
+                        className="bg-brand-500 py-4 px-8 rounded-full shadow-sm"
+                        onPress={() => navigation.navigate('Scanner')}
+                    >
+                        <Text className="text-white font-bold text-base">
+                            {lang === 'en' ? "📸 Scan a Product" : "📸 Scanează un Produs"}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <FlatList

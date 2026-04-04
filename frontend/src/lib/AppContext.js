@@ -2,9 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ============================================================
-// Translations
-// ============================================================
+
 const T = {
     ro: {
         // Profile screen
@@ -90,17 +88,17 @@ const T = {
         productOfflineBarcodeLabel: 'Cod produs:',
         productOfflineRetry: 'Incearca din nou',
         productOfflineBack: 'Inapoi',
-        productScanLabelBtn: '📸 Scaneaza Eticheta Ingredientelor',
+        productScanLabelBtn: 'Scaneaza Eticheta Ingredientelor',
         productBackToScanner: 'Inapoi la Scanner',
         productScoreLabel: 'Scor Siguranta',
-        productPersonalAlerts: '⚠️ Alerte Personale',
+        productPersonalAlerts: 'Alerte Personale',
         productWarnings: 'Avertismente',
         productIngredientSafe: 'Sigur',
         productIngredientLevel: 'Nivel',
         productScoreAdjustedPre: 'Scorul a fost ajustat de la ',
         productScoreAdjustedMid: ' la ',
         productScoreAdjustedPost: ' pe baza profilului tau.',
-        productChatBtn: 'Intreaba CosmetiBot ✨',
+        productChatBtn: 'Intreaba CosmetiBot',
         // Login
         loginTitle: 'Bine ai revenit!',
         loginSub: 'Conecteaza-te la contul tau SmartSkin',
@@ -152,13 +150,13 @@ const T = {
         manualErrGeneric: 'Nu am putut adauga produsul.',
         manualSuccessTitle: 'Succes!',
         manualSuccessMsg: 'Produsul a fost citit de AI si salvat cu succes!',
-        manualAddPhotoBtn: '📸 Adauga Poza Eticheta',
+        manualAddPhotoBtn: 'Adauga Poza Eticheta',
         // Home
         homeGreetingMorning: 'Buna dimineata',
         homeGreetingAfternoon: 'Buna ziua',
         homeGreetingEvening: 'Buna seara',
         homeUserDefault: 'utilizator',
-        homeBannerTitle: 'Stii ce pui\npe pielea ta? \uD83D\uDC84',
+        homeBannerTitle: 'Stii ce pui\npe pielea ta?',
         homeBannerSub: 'Analizeaza orice cosmetica in cateva secunde cu baza de date CosIng a Uniunii Europene.',
         homeActionsTitle: 'Ce vrei sa faci?',
         homeActionScanTitle: 'Scaneaza',
@@ -305,17 +303,17 @@ const T = {
         productOfflineBarcodeLabel: 'Product code:',
         productOfflineRetry: 'Try again',
         productOfflineBack: 'Back',
-        productScanLabelBtn: '📸 Scan Ingredients Label',
+        productScanLabelBtn: 'Scan Ingredients Label',
         productBackToScanner: 'Back to Scanner',
         productScoreLabel: 'Safety Score',
-        productPersonalAlerts: '⚠️ Personal Alerts',
+        productPersonalAlerts: 'Personal Alerts',
         productWarnings: 'Warnings',
         productIngredientSafe: 'Safe',
         productIngredientLevel: 'Level',
         productScoreAdjustedPre: 'Score adjusted from ',
         productScoreAdjustedMid: ' to ',
         productScoreAdjustedPost: ' based on your profile.',
-        productChatBtn: 'Ask CosmetiBot ✨',
+        productChatBtn: 'Ask CosmetiBot',
         // Login
         loginTitle: 'Welcome back!',
         loginSub: 'Sign in to your SmartSkin account',
@@ -367,13 +365,13 @@ const T = {
         manualErrGeneric: 'Could not add the product.',
         manualSuccessTitle: 'Success!',
         manualSuccessMsg: 'The product was read by AI and saved successfully!',
-        manualAddPhotoBtn: '📸 Add Ingredients Photo',
+        manualAddPhotoBtn: 'Add Ingredients Photo',
         // Home
         homeGreetingMorning: 'Good morning',
         homeGreetingAfternoon: 'Good afternoon',
         homeGreetingEvening: 'Good evening',
         homeUserDefault: 'friend',
-        homeBannerTitle: 'Do you know what\nyou put on your skin? \uD83D\uDC84',
+        homeBannerTitle: 'Do you know what\nyou put on your skin?',
         homeBannerSub: 'Analyze any cosmetic in seconds using the EU CosIng database.',
         homeActionsTitle: 'What do you want to do?',
         homeActionScanTitle: 'Scan',
@@ -479,22 +477,22 @@ export const DARK = {
     isDark: true,
 };
 
-// ============================================================
-// Context
-// ============================================================
+
 export const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
     const [lang, setLangState] = useState('ro');
     const [isDark, setIsDarkState] = useState(false);
+    const [isGuest, setIsGuestState] = useState(false);
     const [ready, setReady] = useState(false);
 
-    // Load saved prefs on mount
+   
     useEffect(() => {
-        AsyncStorage.multiGet(['app_lang', 'app_dark'])
-            .then(([[, savedLang], [, savedDark]]) => {
+        AsyncStorage.multiGet(['app_lang', 'app_dark', 'app_guest'])
+            .then(([[, savedLang], [, savedDark], [, savedGuest]]) => {
                 if (savedLang === 'ro' || savedLang === 'en') setLangState(savedLang);
                 if (savedDark === 'true') setIsDarkState(true);
+                if (savedGuest === 'true') setIsGuestState(true);
             })
             .catch(() => {})
             .finally(() => setReady(true));
@@ -515,9 +513,14 @@ export function AppProvider({ children }) {
         AsyncStorage.setItem('app_dark', String(next)).catch(() => {});
     }
 
+    function setIsGuest(val) {
+        setIsGuestState(val);
+        AsyncStorage.setItem('app_guest', String(val)).catch(() => {});
+    }
+
     const colors = isDark ? DARK : LIGHT;
 
-    // Avoid flash before prefs load - show branded spinner instead of white screen
+    
     if (!ready) return (
         <View style={{ flex: 1, backgroundColor: '#FFF1F2', justifyContent: 'center', alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#FDA4AF" />
@@ -525,7 +528,7 @@ export function AppProvider({ children }) {
     );
 
     return (
-        <AppContext.Provider value={{ lang, t, setLanguage, isDark, toggleDark, colors }}>
+        <AppContext.Provider value={{ lang, t, setLanguage, isDark, toggleDark, colors, isGuest, setIsGuest }}>
             {children}
         </AppContext.Provider>
     );

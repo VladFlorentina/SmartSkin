@@ -6,20 +6,83 @@ import { useApp } from '../lib/AppContext';
 
 export default function ChatScreen({ navigation, route }) {
     const { product } = route.params || {};
-    const { t, colors, lang } = useApp();
-    const [messages, setMessages] = useState([
-        {
-            id: '1',
-            text: lang === 'en'
-                ? `Hi! I am CosmetiBot 🤖\n\nI am now analyzing **${product?.name || 'this product'}**.\nIt has a safety score of **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nFeel free to ask me anything about the ingredients or their impact on your skin!`
-                : `Salut! Sunt CosmetiBot 🤖\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nPui-mi orice intrebare despre ingrediente sau impactul lor asupra tenului tau!`,
-            sender: 'ai'
-        }
-    ]);
+    const { t, colors, lang, isGuest, setIsGuest } = useApp();
+    const [messages, setMessages] = useState([]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const flatListRef = useRef(null);
-    const msgIdRef = useRef(1); // contor atomic pentru ID-uri unice (mesajul de greeting are id '1')
+    const msgIdRef = useRef(0);
+
+    const loadHistory = async () => {
+        if (!product?.id) {
+            addGreeting();
+            return;
+        }
+        try {
+            const api = await import('../lib/api');
+            const pastMessages = await api.fetchChatHistory(product.id);
+            if (pastMessages.length > 0) {
+                const formatted = [];
+                for (const m of pastMessages) {
+                    formatted.push({ id: String(++msgIdRef.current), text: m.message, sender: 'user' });
+                    if (m.response) {
+                        formatted.push({ id: String(++msgIdRef.current), text: m.response, sender: 'ai' });
+                    }
+                }
+                setMessages(formatted);
+            } else {
+                addGreeting();
+            }
+        } catch (err) {
+            console.error('Failed to load chat history:', err);
+            addGreeting();
+        }
+    };
+
+    const addGreeting = () => {
+        setMessages([{
+            id: String(++msgIdRef.current),
+            text: lang === 'en'
+                ? `Hi! I am CosmetiBot\n\nI am now analyzing **${product?.name || 'this product'}**.\nIt has a safety score of **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nFeel free to ask me anything about the ingredients or their impact on your skin!`
+                : `Salut! Sunt CosmetiBot\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nPui-mi orice intrebare despre ingrediente sau impactul lor asupra tenului tau!`,
+            sender: 'ai'
+        }]);
+    };
+
+    React.useEffect(() => {
+        if (!isGuest) {
+            loadHistory();
+        }
+    }, []);
+
+    if (isGuest) {
+        return (
+            <View className="flex-1 justify-center items-center p-8" style={{ backgroundColor: colors.bg }}>
+                <View className="bg-brand-50 w-40 h-40 rounded-full items-center justify-center mb-6">
+                    <Text className="text-6xl">💬</Text>
+                </View>
+                <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
+                    {lang === 'en' ? "Account Required" : "Cont Necesar pentru Chat"}
+                </Text>
+                <Text className="text-center font-medium mb-8 leading-relaxed" style={{ color: colors.textSub }}>
+                    {lang === 'en' 
+                        ? "Register a free account to chat with CosmetiBot and get insights about cosmetics!" 
+                        : "Pentru a discuta cu inteligența artificială și a primi recomandări personalizate, creează un cont gratuit!"}
+                </Text>
+                <TouchableOpacity 
+                    className="bg-brand-500 py-4 px-8 rounded-full shadow-sm mb-4 w-full items-center"
+                    onPress={() => setIsGuest(false)}
+                >
+                    <Text className="text-white font-bold text-base">
+                        {lang === 'en' ? "Create Account" : "Creează Cont"}
+                    </Text>
+                </TouchableOpacity>
+                <TouchableOpacity className="py-2" onPress={() => navigation.goBack()}>
+                    <Text className="font-bold text-brand-500">{t('scannerBack')}</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
 
     const handleSend = async () => {
         if (!inputText.trim()) return;
@@ -81,7 +144,7 @@ export default function ChatScreen({ navigation, route }) {
                     )}
                 </View>
                 <Text className={`text-[10px] text-brand-300 mt-1 ${isUser ? 'text-right mr-2' : 'ml-2'}`}>
-                    {isUser ? t('chatYou') : 'CosmetiBot ✨'}
+                    {isUser ? t('chatYou') : 'CosmetiBot'}
                 </Text>
             </View>
         );
@@ -89,7 +152,7 @@ export default function ChatScreen({ navigation, route }) {
 
     return (
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             className="flex-1"
             style={{ backgroundColor: colors.bg }}
@@ -130,6 +193,7 @@ export default function ChatScreen({ navigation, route }) {
                 style={{ backgroundColor: colors.header, borderColor: colors.border }}
             >
                 <TextInput
+                    className="text-gray-800 dark:text-white"
                     style={{
                         flex: 1,
                         borderRadius: 24,
@@ -160,7 +224,7 @@ export default function ChatScreen({ navigation, route }) {
                     {isLoading ? (
                         <ActivityIndicator color="white" size="small" />
                     ) : (
-                        <Text className="text-white font-bold text-xl">➤</Text>
+                        <Text className="text-white font-bold text-xl"></Text>
                     )}
                 </TouchableOpacity>
             </View>

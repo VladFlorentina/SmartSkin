@@ -5,21 +5,17 @@ dotenv.config();
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
-    console.warn("⚠️ GEMINI_API_KEY is not defined in environment variables. AI Features will fail.");
+    console.warn("GEMINI_API_KEY is not defined in environment variables. AI Features will fail.");
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
-// Model primar: gemini-3-flash-preview
-// Model de rezerva: gemini-2.5-flash - folosit automat la atingerea limitei
+
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
 const GEMINI_FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash';
 
-const GEMINI_TIMEOUT_MS = 90000; // 90 secunde - daca Gemini nu raspunde, eliberam resursa
+const GEMINI_TIMEOUT_MS = 90000; // 90 sec
 
-/**
- * Wrapeaza un Promise cu un timeout. Daca promise-ul nu se rezolva in `ms` milisecunde,
- * respinge cu eroare de timeout pentru a elibera worker-ul Node.js.
- */
+
 function withTimeout(promise, ms = GEMINI_TIMEOUT_MS) {
     const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error(`Gemini did not respond within ${ms / 1000} seconds. Please try again.`)), ms)
@@ -27,11 +23,7 @@ function withTimeout(promise, ms = GEMINI_TIMEOUT_MS) {
     return Promise.race([promise, timeout]);
 }
 
-/**
- * Detecteaza erori care justifica incercarea modelului de rezerva:
- * - Rate limit (429 / RESOURCE_EXHAUSTED)
- * - Model inexistent / indisponibil (404 / NOT_FOUND / INVALID_ARGUMENT)
- */
+
 function shouldUseFallback(error) {
     const msg = (error?.message || '').toLowerCase();
     return (
@@ -220,6 +212,6 @@ Required output format (array with exactly ${unknownNames.length} objects, same 
         return parsed;
     } catch (error) {
         console.error('[AI RESOLVE] Eroare la rezolvarea ingredientelor necunoscute:', error.message);
-        return []; // Fallback: returnam array gol, logica existenta va trata ca "unknown"
+        return []; 
     }
 }

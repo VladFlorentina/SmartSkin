@@ -1,18 +1,14 @@
 import { supabase } from '../config/supabase.js';
 import { generateChatWithFallback } from '../services/geminiService.js';
 
-/**
- * POST /api/chat
- * Trimite un mesaj catre AI (cu contextul produsului)
- * Body: { message, productId, contextData }
- */
+
 export async function sendMessage(req, res) {
     try {
         const { message, productId, contextData } = req.body;
         const lang = req.body.lang || 'ro'; // 'ro' or 'en'
         const userId = req.user?.id;
 
-        // Verifica daca avem API Key
+        // Ver daca avem API Key
         if (!process.env.GEMINI_API_KEY) {
             return res.status(503).json({
                 error: 'AI Service Unavailable',
@@ -20,8 +16,8 @@ export async function sendMessage(req, res) {
             });
         }
 
-        // Construieste prompt-ul de sistem
-        // Include datele despre produs daca exista
+        // 
+        //prompt ,  include datele despre produs daca exista
         let systemPrompt = `
 You are CosmetiBot, an AI assistant expert in dermatology and cosmetic chemistry for the SmartSkin app.
 Your role is to help users understand ingredients in cosmetic products.
@@ -50,11 +46,9 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
 `;
         }
 
-        // Construim istoricul real al conversatiei pentru Gemini
-        // Formatul history primit din frontend: [{role: 'user'|'model', text: '...'}]
+        
         const receivedHistory = req.body.history || [];
 
-        // Istoricul Gemini incepe cu prompt-ul de sistem, urmat de conversatia reala
         const geminiHistory = [
             {
                 role: 'user',
@@ -67,18 +61,14 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
                     : 'Am inteles. Sunt gata sa analizez produsul si sa raspund la intrebari despre ingrediente.'
                 }],
             },
-            // Adaugam istoricul real al conversatiei (mesajele anterioare)
             ...receivedHistory.map(msg => ({
                 role: msg.role,
                 parts: [{ text: msg.text }],
             })),
         ];
 
-        // Trimite mesajul cu fallback automat la atingerea limitei zilnice
         const responseText = await generateChatWithFallback(geminiHistory, message);
 
-        // Salveaza conversatia in baza de date (fire-and-forget)
-        // NU await - un esec la salvare nu trebuie sa blocheze/distruga raspunsul AI
         if (userId) {
             (async () => {
                 try {
@@ -106,5 +96,39 @@ Utilizatorul intreaba despre acest produs. Raspunde specific la contextul de mai
             message: 'Could not process the message. Please try again later.',
             detail: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
+    }
+}
+
+export async function getChatHistory(req, res) {
+    try {
+        const { productId } = req.params;
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        
+        if (!productId) {
+            return res.json([]);
+        }
+
+        const { data, error } = await supabase
+            .from('ai_conversations')
+            .select('message, response, created_at')
+            .eq('user_id', userId)
+            .eq('product_id', productId)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+        if (error) {
+            console.error('Error fetching chat history:', error.message);
+            return res.status(500).json({ error: 'Could not fetch history' });
+        }
+
+        // Intoarcem elementele cronologic crescator (vechi -> nou)
+        return res.json(data ? data.reverse() : []);
+    } catch (err) {
+        console.error('getChatHistory Exception:', err);
+        return res.status(500).json({ error: 'Server error' });
     }
 }

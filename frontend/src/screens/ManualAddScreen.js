@@ -24,7 +24,19 @@ export default function ManualAddScreen({ navigation, route }) {
     const [base64Image, setBase64Image] = useState(null);
     const [mimeType, setMimeType] = useState('image/jpeg');
     const [loading, setLoading] = useState(false);
+    const [loadingStep, setLoadingStep] = useState(0);
     const { t, colors, lang } = useApp();
+
+    React.useEffect(() => {
+        let interval;
+        if (loading) {
+            setLoadingStep(0);
+            interval = setInterval(() => {
+                setLoadingStep(prev => (prev < 2 ? prev + 1 : prev));
+            }, 4000);
+        }
+        return () => clearInterval(interval);
+    }, [loading]);
 
     const pickImage = async () => {
         Alert.alert(
@@ -154,11 +166,15 @@ export default function ManualAddScreen({ navigation, route }) {
     };
 
     if (loading) {
+        const loadingMessages = lang === 'en'
+            ? ["Uploading image securely...", "Extracting text from label...", "Analyzing toxicity details..."]
+            : ["Încărcăm imaginea securizat...", "Extragem textul de pe etichetă...", "Analizăm toxicitatea detaliat..."];
+
         return (
             <Layout className="justify-center items-center">
                 <ActivityIndicator size="large" color="#FDA4AF" />
                 <Text className="mt-4 font-medium text-center px-6" style={{ color: colors.textSub }}>
-                    {t('manualLoadingText')} 🤖📖
+                    {loadingMessages[loadingStep]} 🤖📖
                 </Text>
             </Layout>
         );

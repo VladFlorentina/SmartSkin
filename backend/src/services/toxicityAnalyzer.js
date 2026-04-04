@@ -728,7 +728,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null, l
             ingredientsBreakdown.push({
                 name: originalName,
                 score: null,
-                riskLevel: watchlistMatch ? watchlistMatch.riskLevel : 0,
+                riskLevel: watchlistMatch ? watchlistMatch.riskLevel : 2, // Fals negativ evaluare: unknown = 2
                 riskCategory: watchlistMatch ? watchlistMatch.category : 'unknown',
                 description: watchlistMatch
                     ? `Ingredient negasit in CosIng/UE | ⚠️ ${watchlistMatch.desc}`
@@ -789,7 +789,13 @@ function calculateSafetyScore(ingredients) {
         0: 100  // Tot safe → poate ajunge 100
     };
 
-    const scoreCap = scoreCapByWorstIngredient[maxRiskLevel] ?? 100;
+    let scoreCap = scoreCapByWorstIngredient[maxRiskLevel] ?? 100;
+
+    // Penalizare globala: daca peste 50% din ingrediente sunt neidentificate, cappam la 40
+    const unknownCount = ingredients.filter(i => i.riskCategory === 'unknown').length;
+    if (unknownCount > ingredients.length / 2) {
+        scoreCap = Math.min(scoreCap, 40);
+    }
 
     let score = 100;
 

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import Button from '../components/Button';
@@ -29,10 +29,19 @@ export default function ScannerScreen({ navigation }) {
                 <Text className="text-xl font-bold mb-4 text-center" style={{ color: colors.text }}>
                     {t('scannerPermissionText')}
                 </Text>
-                <Button
-                    title={t('scannerAllow')}
-                    onPress={requestPermission}
-                />
+                <View className="w-full mb-4 px-4">
+                    <Button
+                        title={lang === 'en' ? "Open Settings" : "Deschide Setările"}
+                        onPress={() => Linking.openSettings()}
+                    />
+                </View>
+                <View className="mb-4 w-full px-4">
+                    <Button
+                        title={t('scannerAllow') || (lang === 'en' ? "Request again" : "Cere din nou")}
+                        onPress={requestPermission}
+                        variant="outline"
+                    />
+                </View>
                 <View className="mt-4">
                     <Button
                         title={t('scannerBack')}

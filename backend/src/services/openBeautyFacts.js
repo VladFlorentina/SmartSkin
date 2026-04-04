@@ -26,12 +26,12 @@ export async function fetchProductMetadata(barcode, timeoutMs = 3000) {
             name: product.product_name || null,
             brand: product.brands || null,
             imageUrl: product.image_url || product.image_front_url || null,
-            // Ingredientele le includem DOAR daca exista (bonus, nu obligatoriu)
+            
             ingredientsText: product.ingredients_text?.trim() || null,
             categories: product.categories || '',
         };
     } catch (error) {
-        // Nu aruncam erori - e o cautare optionala
+        // Nu aruncam erori,e o cautare optionala
         console.log(`[OBF METADATA] Nu am gasit metadata pentru ${barcode}: ${error.message}`);
         return null;
     }
