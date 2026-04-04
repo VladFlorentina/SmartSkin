@@ -4,10 +4,13 @@ import { View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
 import { supabase } from './src/lib/supabase';
 import { NativeWindStyleSheet } from "nativewind";
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { AppProvider, useApp } from './src/lib/AppContext';
+
+WebBrowser.maybeCompleteAuthSession();
 
 // Screens
 import LoginScreen from './src/screens/LoginScreen';
@@ -28,6 +31,7 @@ NativeWindStyleSheet.setOutput({
 // Navigatoare separate pentru auth si app
 const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
+const GuestStack = createNativeStackNavigator();
 
 // Stack pentru utilizatori neautentificati (Login/Register)
 function AuthNavigator() {
@@ -55,11 +59,21 @@ function AppNavigator() {
   );
 }
 
+function GuestNavigator() {
+  return (
+    <GuestStack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Scanner">
+      <GuestStack.Screen name="Scanner" component={ScannerScreen} />
+      <GuestStack.Screen name="Product" component={ProductScreen} />
+    </GuestStack.Navigator>
+  );
+}
+
 function RootNavigator({ session }) {
   const { isGuest } = useApp();
+  const isAuthenticated = Boolean(session && session.user);
   return (
     <NavigationContainer>
-      {(session && session.user) || isGuest ? <AppNavigator /> : <AuthNavigator />}
+      {isAuthenticated ? <AppNavigator /> : isGuest ? <GuestNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }

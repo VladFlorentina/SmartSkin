@@ -2,6 +2,7 @@
   "expo": {
     "name": "SmartSkin",
     "slug": "smartskin",
+    "scheme": "smartskin",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,15 +21,22 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "softwareKeyboardLayoutMode": "resize"
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.vlad_florentina.smartskin"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "extra": {
       "backendUrl": "",
-      "backendIp": "192.168.100.26",  
-      "backendPort": "3000"
-    }
+      "backendIp": "192.168.100.26",
+      "backendPort": "3000",
+      "eas": {
+        "projectId": "9bcb750c-935f-491e-80fe-51be90ac8e39"
+      }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

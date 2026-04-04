@@ -8,7 +8,7 @@ import { useApp } from '../lib/AppContext';
 
 export default function ProductScreen({ navigation, route }) {
     const { barcode, cachedProduct } = route.params;
-    const { t, colors, lang } = useApp();
+    const { t, colors, lang, isGuest } = useApp();
     // Daca avem date din cache (din Istoric), le folosim imediat
     const [product, setProduct] = useState(
         cachedProduct?.analysis?.ingredientsBreakdown ? cachedProduct : null
@@ -49,7 +49,7 @@ export default function ProductScreen({ navigation, route }) {
             setProduct(data);
 
             // Background task: salveaza in istoricul utilizatorului autentificat
-            if (data && !data.error) {
+            if (!isGuest && data && !data.error) {
                 saveToUserHistory(data.id, barcode, data.analysis?.safetyScore);
             }
         } catch (error) {
@@ -216,8 +216,8 @@ export default function ProductScreen({ navigation, route }) {
                         <AnimatedScoreRing score={safetyScore} />
                     </View>
 
-                    {/* Personal Warnings - afisate doar daca userul are profil completat */}
-                    {product.analysis?.personalWarnings?.length > 0 && (
+                    {/* Personal Warnings - afisate doar daca userul are cont */}
+                    {!isGuest && product.analysis?.personalWarnings?.length > 0 && (
                         <View className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
                             <Text className="text-rose-700 font-bold text-sm uppercase tracking-widest mb-3">
                                 {t('productPersonalAlerts')}
@@ -255,52 +255,68 @@ export default function ProductScreen({ navigation, route }) {
                         </View>
                     )}
 
-                    {/* AI Chat Prompt */}
-                    <View className="p-6 rounded-3xl shadow-md mb-8 items-center" style={{ backgroundColor: colors.card }}>
-                        <Text className="text-center font-medium mb-4 leading-relaxed" style={{ color: colors.textSub }}>
-                            {t('productChatPrompt')}
-                        </Text>
-                        <Button
-                            title={t('productChatBtn')}
-                            onPress={() => navigation.navigate('Chat', { product })}
-                            variant="outline"
-                        />
-                    </View>
-
-                    {/* Ingredients Breakdown */}
-                    <Text className="text-xl font-bold mb-4 ml-2" style={{ color: colors.text }}>{t('productIngredientsTitle')}</Text>
-
-                    <View className="rounded-3xl shadow-md p-6" style={{ backgroundColor: colors.card }}>
-                        {product.analysis?.ingredientsBreakdown && product.analysis.ingredientsBreakdown.length > 0 ? (
-                            product.analysis.ingredientsBreakdown.map((item, index) => {
-                                const itemColor = getScoreColor(100 - (item.riskLevel * 20)); // Map risk 0-5 to pale colors (0=emerald, 5=rose)
-
-                                return (
-                                    <View key={index} className="flex-row items-center justify-between py-3 border-b border-brand-50 last:border-0">
-                                        <View className="flex-1 pr-4">
-                                            <Text className="font-medium" numberOfLines={1} style={{ color: colors.text }}>
-                                                {item.name}
-                                            </Text>
-                                            {item.description && (
-                                                <Text className="text-xs mt-1" numberOfLines={2} style={{ color: colors.textSub }}>
-                                                    {item.description}
-                                                </Text>
-                                            )}
-                                        </View>
-                                        <View className={`px-3 py-1 rounded-full ${itemColor.bg} border ${itemColor.border}`}>
-                                            <Text className={`text-xs font-bold ${itemColor.text}`}>
-                                                {item.riskLevel === 0 ? t('productIngredientSafe') : `${t('productIngredientLevel')} ${item.riskLevel}`}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                );
-                            })
-                        ) : (
-                            <Text className="italic text-center py-4" style={{ color: colors.textMuted }}>
-                                {t('productNoAnalysis')}
+                    {/* AI Chat Prompt - only for logged in users */}
+                    {!isGuest && (
+                        <View className="p-6 rounded-3xl shadow-md mb-8 items-center" style={{ backgroundColor: colors.card }}>
+                            <Text className="text-center font-medium mb-4 leading-relaxed" style={{ color: colors.textSub }}>
+                                {t('productChatPrompt')}
                             </Text>
-                        )}
-                    </View>
+                            <Button
+                                title={t('productChatBtn')}
+                                onPress={() => navigation.navigate('Chat', { product })}
+                                variant="outline"
+                            />
+                        </View>
+                    )}
+
+                    {/* Ingredients Breakdown - only for logged in users */}
+                    {!isGuest && (
+                        <>
+                            <Text className="text-xl font-bold mb-4 ml-2" style={{ color: colors.text }}>{t('productIngredientsTitle')}</Text>
+
+                            <View className="rounded-3xl shadow-md p-6" style={{ backgroundColor: colors.card }}>
+                                {product.analysis?.ingredientsBreakdown && product.analysis.ingredientsBreakdown.length > 0 ? (
+                                    product.analysis.ingredientsBreakdown.map((item, index) => {
+                                        const itemColor = getScoreColor(100 - (item.riskLevel * 20));
+
+                                        return (
+                                            <View key={index} className="flex-row items-center justify-between py-3 border-b border-brand-50 last:border-0">
+                                                <View className="flex-1 pr-4">
+                                                    <Text className="font-medium" numberOfLines={1} style={{ color: colors.text }}>
+                                                        {item.name}
+                                                    </Text>
+                                                    {item.description && (
+                                                        <Text className="text-xs mt-1" numberOfLines={2} style={{ color: colors.textSub }}>
+                                                            {item.description}
+                                                        </Text>
+                                                    )}
+                                                </View>
+                                                <View className={`px-3 py-1 rounded-full ${itemColor.bg} border ${itemColor.border}`}>
+                                                    <Text className={`text-xs font-bold ${itemColor.text}`}>
+                                                        {item.riskLevel === 0 ? t('productIngredientSafe') : `${t('productIngredientLevel')} ${item.riskLevel}`}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        );
+                                    })
+                                ) : (
+                                    <Text className="italic text-center py-4" style={{ color: colors.textMuted }}>
+                                        {t('productNoAnalysis')}
+                                    </Text>
+                                )}
+                            </View>
+                        </>
+                    )}
+
+                    {isGuest && (
+                        <View className="rounded-3xl p-5 mb-6" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                            <Text className="text-center font-medium" style={{ color: colors.textSub }}>
+                                {lang === 'en'
+                                    ? 'Guest mode shows only the safety score. Create an account to see detailed analysis, history and personalized warnings.'
+                                    : 'Modul vizitator afișează doar scorul de siguranță. Creează un cont pentru analiză detaliată, istoric și avertismente personalizate.'}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </ScrollView>
         </View>

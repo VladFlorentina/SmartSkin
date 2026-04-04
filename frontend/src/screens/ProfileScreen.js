@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import { useApp } from '../lib/AppContext';
 
 export default function ProfileScreen({ navigation }) {
-    const { t, colors, lang, setLanguage, isDark, toggleDark } = useApp();
+    const { t, colors, lang, setLanguage, isDark, toggleDark, setIsGuest } = useApp();
 
     const SKIN_TYPES = [
         { key: 'normal', label: t('skinTypeNormal'), emoji: '🌿' },
@@ -272,7 +272,10 @@ export default function ProfileScreen({ navigation }) {
                                 t('profileLogoutMsg'),
                                 [
                                     { text: t('profileCancel'), style: 'cancel' },
-                                    { text: t('profileYes'), onPress: () => supabase.auth.signOut() },
+                                    { text: t('profileYes'), onPress: async () => {
+                                        await supabase.auth.signOut();
+                                        setIsGuest(false);
+                                    } },
                                 ]
                             );
                         }}

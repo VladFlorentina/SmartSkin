@@ -8,7 +8,7 @@ import { useApp } from '../lib/AppContext';
 export default function ScannerScreen({ navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
-    const { t, colors } = useApp();
+    const { t, colors, lang, isGuest, setIsGuest } = useApp();
 
     // Reseteaza scanner-ul cand user-ul revine pe acest ecran
     useFocusEffect(
@@ -45,7 +45,7 @@ export default function ScannerScreen({ navigation }) {
                 <View className="mt-4">
                     <Button
                         title={t('scannerBack')}
-                        onPress={() => navigation.navigate('Home')}
+                        onPress={() => setIsGuest(false)}
                         variant="ghost"
                     />
                 </View>
@@ -69,28 +69,39 @@ export default function ScannerScreen({ navigation }) {
                 }}
             />
             {/* Overlay - separat de CameraView pentru a evita warning-ul */}
-            <View style={StyleSheet.absoluteFillObject} className="flex-row justify-between p-12">
-                <TouchableOpacity
-                    className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
-                    onPress={() => navigation.navigate('Home')}
-                >
-                    <Text className="text-white font-bold text-sm">{t('scannerHome')}</Text>
-                </TouchableOpacity>
-                <View className="flex-row self-start" style={{ gap: 8 }}>
+            {!isGuest ? (
+                <View style={StyleSheet.absoluteFillObject} className="flex-row justify-between p-12">
                     <TouchableOpacity
-                        className="p-3 bg-brand-500/80 rounded-full px-5 flex-row items-center"
-                        onPress={() => navigation.navigate('Profile')}
+                        className="p-3 bg-white/20 rounded-full w-24 items-center self-start"
+                        onPress={() => navigation.navigate('Home')}
                     >
-                        <Text className="text-white font-bold text-sm">👤 {t('scannerProfile')}</Text>
+                        <Text className="text-white font-bold text-sm">{t('scannerHome')}</Text>
                     </TouchableOpacity>
+                    <View className="flex-row self-start" style={{ gap: 8 }}>
+                        <TouchableOpacity
+                            className="p-3 bg-brand-500/80 rounded-full px-5 flex-row items-center"
+                            onPress={() => navigation.navigate('Profile')}
+                        >
+                            <Text className="text-white font-bold text-sm">👤 {t('scannerProfile')}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            className="p-3 bg-brand-500 rounded-full px-5 flex-row items-center"
+                            onPress={() => navigation.navigate('History')}
+                        >
+                            <Text className="text-white font-bold text-sm">📚 {t('scannerHistory')}</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            ) : (
+                <View style={StyleSheet.absoluteFillObject} className="flex-row justify-between p-6">
                     <TouchableOpacity
-                        className="p-3 bg-brand-500 rounded-full px-5 flex-row items-center"
-                        onPress={() => navigation.navigate('History')}
+                        className="w-11 h-11 items-center justify-center rounded-full border border-white/25 bg-white/15 self-start"
+                        onPress={() => setIsGuest(false)}
                     >
-                        <Text className="text-white font-bold text-sm">📚 {t('scannerHistory')}</Text>
+                        <Text className="text-white font-bold text-lg">←</Text>
                     </TouchableOpacity>
                 </View>
-            </View>
+            )}
             <View className="absolute bottom-16 w-full items-center">
                 <View className="bg-white/80 px-6 py-3 rounded-2xl">
                     <Text className="text-brand-900 font-bold">
