@@ -1,8 +1,10 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
 import { sendChatMessage } from '../lib/api';
 import { useApp } from '../lib/AppContext';
+import { TextInput } from 'react-native';
 
 export default function ChatScreen({ navigation, route }) {
     const { product } = route.params || {};
@@ -151,6 +153,7 @@ export default function ChatScreen({ navigation, route }) {
     };
 
     return (
+        <SafeAreaView className="flex-1" style={{ backgroundColor: colors.bg }}>
         <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
@@ -181,37 +184,49 @@ export default function ChatScreen({ navigation, route }) {
                 data={messages}
                 keyExtractor={item => item.id}
                 renderItem={renderMessage}
-                contentContainerStyle={{ padding: 24, paddingBottom: 10 }}
+                contentContainerStyle={{ padding: 24, paddingBottom: 20, flexGrow: 1 }}
                 onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                 onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
-                style={{ backgroundColor: colors.bg }}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                style={{ flex: 1, backgroundColor: colors.bg }}
             />
 
             {/* Input Area */}
             <View
-                className="px-6 py-4 border-t flex-row items-center"
+                className="px-6 py-4 border-t flex-row items-end"
                 style={{ backgroundColor: colors.header, borderColor: colors.border }}
             >
                 <TextInput
-                    className="text-gray-800 dark:text-white"
                     style={{
                         flex: 1,
-                        borderRadius: 24,
-                        paddingHorizontal: 20,
-                        paddingVertical: 12,
+                        minHeight: 56,
+                        maxHeight: 140,
                         marginRight: 12,
+                        borderRadius: 24,
+                        paddingHorizontal: 18,
+                        paddingTop: 14,
+                        paddingBottom: 12,
+                        textAlignVertical: 'top',
                         backgroundColor: colors.inputBg,
                         color: colors.inputText,
+                        opacity: 1,
                         borderWidth: 1,
                         borderColor: colors.border,
-                        fontSize: 14,
-                        maxHeight: 120,
+                        fontSize: 15,
+                        fontWeight: '500',
                     }}
                     placeholder={t('chatPlaceholder')}
                     placeholderTextColor={colors.placeholder}
                     value={inputText}
                     onChangeText={setInputText}
                     multiline
+                    numberOfLines={4}
+                    selectionColor={colors.text}
+                    cursorColor={colors.inputText}
+                    underlineColorAndroid="transparent"
+                    autoCorrect={false}
+                    autoCapitalize="sentences"
                     maxLength={500}
                 />
 
@@ -230,5 +245,6 @@ export default function ChatScreen({ navigation, route }) {
             </View>
 
         </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }

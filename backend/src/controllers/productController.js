@@ -150,7 +150,11 @@ export async function getProductByBarcode(req, res) {
 
                 // Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
                 const userPrefs = getUserPreferences(req);
-                const analysis = await analyzeToxicity(cachedProduct.ingredients_list, userPrefs, lang);
+                const analysis = await analyzeToxicity(cachedProduct.ingredients_list, userPrefs, lang, {
+                    name: cachedProduct.name,
+                    brand: cachedProduct.brand,
+                    category: cachedProduct.category,
+                });
                 if (userPrefs) console.log(`[PERSONALIZED] Analysis personalized for skin_type=${userPrefs.skin_type}, allergies=${userPrefs.allergies.length}`);
 
                 return res.json({
@@ -169,7 +173,12 @@ export async function getProductByBarcode(req, res) {
         if (obfData?.ingredientsText) {
             console.log(`[OBF] Ingrediente gasite pentru ${barcode} - analizam...`);
             const userPrefs = getUserPreferences(req);
-            const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs, lang);
+            const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs, lang, {
+                name: obfData.name,
+                brand: obfData.brand,
+                category: obfData.categories || null,
+                description: obfData.description || null,
+            });
 
             
             const { data: savedProduct, error: saveError } = await supabase
@@ -195,6 +204,7 @@ export async function getProductByBarcode(req, res) {
                 barcode,
                 name: obfData.name || 'Produs Necunoscut',
                 brand: obfData.brand || 'Brand Necunoscut',
+                category: obfData.categories || null,
                 imageUrl: obfData.imageUrl,
                 ingredients_list: obfData.ingredientsText,
                 analysis,
@@ -389,7 +399,11 @@ export async function addManualProduct(req, res) {
 
         
         const userPrefs = getUserPreferences(req);
-        const analysis = await analyzeToxicity(ingredientsText, userPrefs, lang);
+        const analysis = await analyzeToxicity(ingredientsText, userPrefs, lang, {
+            name,
+            brand,
+            category: 'manual_entry',
+        });
         const productDataToSave = {
             barcode: barcode || `MANUAL-${randomUUID()}`, 
             name: name,
@@ -418,6 +432,7 @@ export async function addManualProduct(req, res) {
             barcode: savedProduct.barcode,
             name: savedProduct.name,
             brand: savedProduct.brand,
+            category: savedProduct.category,
             ingredients_list: savedProduct.ingredients_list,
             imageUrl: null,
             analysis,

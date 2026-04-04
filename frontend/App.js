@@ -21,6 +21,7 @@ import SearchScreen from './src/screens/SearchScreen';
 import ProductScreen from './src/screens/ProductScreen';
 import ManualAddScreen from './src/screens/ManualAddScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import CompareScreen from './src/screens/CompareScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 
@@ -53,6 +54,7 @@ function AppNavigator() {
       <AppStack.Screen name="Product" component={ProductScreen} />
       <AppStack.Screen name="ManualAdd" component={ManualAddScreen} />
       <AppStack.Screen name="History" component={HistoryScreen} />
+      <AppStack.Screen name="Compare" component={CompareScreen} />
       <AppStack.Screen name="Chat" component={ChatScreen} />
       <AppStack.Screen name="Profile" component={ProfileScreen} />
     </AppStack.Navigator>

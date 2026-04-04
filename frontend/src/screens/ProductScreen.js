@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { fetchProductDetails, saveToUserHistory } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import Layout from '../components/Layout';
 import Button from '../components/Button';
 import AnimatedScoreRing from '../components/AnimatedScoreRing';
+import IngredientInsightCharts from '../components/IngredientInsightCharts';
 import { useApp } from '../lib/AppContext';
 
 export default function ProductScreen({ navigation, route }) {
@@ -19,12 +21,44 @@ export default function ProductScreen({ navigation, route }) {
     const [notFound, setNotFound] = useState(false);
     const [isOffline, setIsOffline] = useState(false);
     const [ocrMetadata, setOcrMetadata] = useState(null); // Metadata de la OBF pentru pre-fill
+    const [userProfile, setUserProfile] = useState({ skinType: null, allergies: [] });
 
     useEffect(() => {
         // Daca avem deja date complete din cache, nu mai facem fetch
         if (cachedProduct?.analysis?.ingredientsBreakdown) return;
         loadProduct();
     }, [barcode]);
+
+    useEffect(() => {
+        if (isGuest) {
+            setUserProfile({ skinType: null, allergies: [] });
+            return;
+        }
+
+        let active = true;
+
+        async function loadProfile() {
+            try {
+                const { data } = await supabase.auth.getUser();
+                const metadata = data?.user?.user_metadata || {};
+
+                if (active) {
+                    setUserProfile({
+                        skinType: metadata.skin_type || null,
+                        allergies: Array.isArray(metadata.allergies) ? metadata.allergies : [],
+                    });
+                }
+            } catch (error) {
+                console.log('Could not load profile metadata for charts:', error);
+            }
+        }
+
+        loadProfile();
+
+        return () => {
+            active = false;
+        };
+    }, [isGuest]);
 
     async function loadProduct() {
         try {
@@ -171,6 +205,10 @@ export default function ProductScreen({ navigation, route }) {
 
     const safetyScore = product.analysis?.safetyScore || 0;
     const scoreColors = getScoreColor(safetyScore);
+    const scoreCapReason = product.analysis?.scoreCapReason;
+    const scoreCap = product.analysis?.scoreCap;
+    const scoreCapIngredient = product.analysis?.scoreCapIngredient;
+    const greenwashingAlert = product.analysis?.greenwashingAlert;
 
     return (
         <View className="flex-1" style={{ backgroundColor: colors.bg }}>
@@ -216,6 +254,37 @@ export default function ProductScreen({ navigation, route }) {
                         <AnimatedScoreRing score={safetyScore} />
                     </View>
 
+                    {scoreCapReason && (
+                        <View className="rounded-3xl p-4 mb-6 border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }}>
+                            <Text className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#C2410C' }}>
+                                {lang === 'en' ? 'Score explanation' : 'Explicarea scorului'}
+                            </Text>
+                            <Text className="text-sm leading-relaxed" style={{ color: '#9A3412' }}>
+                                {scoreCap <= 20 && scoreCapIngredient
+                                    ? (lang === 'en'
+                                        ? `Score limited to ${scoreCap} because of the banned ingredient: ${scoreCapIngredient}.`
+                                        : `Scor limitat la ${scoreCap} din cauza ingredientului interzis: ${scoreCapIngredient}.`)
+                                    : scoreCapReason}
+                            </Text>
+                        </View>
+                    )}
+
+                    {greenwashingAlert?.flagged && (
+                        <View className="rounded-3xl p-4 mb-6 border" style={{ backgroundColor: '#FFF1F2', borderColor: '#FDA4AF' }}>
+                            <Text className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: '#BE185D' }}>
+                                {lang === 'en' ? 'Potential greenwashing' : 'Posibil greenwashing'}
+                            </Text>
+                            <Text className="text-sm leading-relaxed mb-2" style={{ color: '#9D174D' }}>
+                                {lang === 'en' ? greenwashingAlert.messageEn : greenwashingAlert.messageRo}
+                            </Text>
+                            <Text className="text-xs" style={{ color: '#BE185D' }}>
+                                {lang === 'en'
+                                    ? `Risky ingredients: ${greenwashingAlert.triggerIngredients.join(', ')}`
+                                    : `Ingrediente problematice: ${greenwashingAlert.triggerIngredients.join(', ')}`}
+                            </Text>
+                        </View>
+                    )}
+
                     {/* Personal Warnings - afisate doar daca userul are cont */}
                     {!isGuest && product.analysis?.personalWarnings?.length > 0 && (
                         <View className="bg-rose-50 border border-rose-200 rounded-3xl p-5 mb-6">
@@ -253,6 +322,17 @@ export default function ProductScreen({ navigation, route }) {
                                 </View>
                             ))}
                         </View>
+                    )}
+
+                    {/* Ingredient analytics - only for logged in users */}
+                    {!isGuest && product.analysis?.ingredientsBreakdown?.length > 0 && (
+                        <IngredientInsightCharts
+                            ingredients={product.analysis.ingredientsBreakdown}
+                            colors={colors}
+                            lang={lang}
+                            productScore={safetyScore}
+                            skinType={userProfile.skinType}
+                        />
                     )}
 
                     {/* AI Chat Prompt - only for logged in users */}

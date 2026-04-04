@@ -8,14 +8,167 @@ import { resolveUnknownIngredients } from './geminiService.js';
 // vor fi gasite direct la urmatoarea analiza, fara AI).
 // Limita: max 5000 intrari - la depasire se goleste automat (anti memory-leak).
 const AI_CACHE_MAX_SIZE = 5000;
-const aiResolvedCache = new Set();
+const aiResolvedCache = new Map();
 
 function addToAiCache(name) {
-    if (aiResolvedCache.size >= AI_CACHE_MAX_SIZE) {
-        console.log(`[AI CACHE] Limita de ${AI_CACHE_MAX_SIZE} intrari atinsa - golesc cache-ul.`);
-        aiResolvedCache.clear();
+    const key = String(name || '').toUpperCase().trim();
+    if (!key) return;
+
+    if (aiResolvedCache.has(key)) {
+        aiResolvedCache.delete(key);
     }
-    aiResolvedCache.add(name);
+
+    aiResolvedCache.set(key, Date.now());
+
+    while (aiResolvedCache.size > AI_CACHE_MAX_SIZE) {
+        const oldestKey = aiResolvedCache.keys().next().value;
+        aiResolvedCache.delete(oldestKey);
+    }
+}
+
+function hasAiCache(name) {
+    const key = String(name || '').toUpperCase().trim();
+    if (!key || !aiResolvedCache.has(key)) return false;
+
+    const value = aiResolvedCache.get(key);
+    aiResolvedCache.delete(key);
+    aiResolvedCache.set(key, value);
+    return true;
+}
+
+function normalizeForMatching(value) {
+    return String(value || '')
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, '');
+}
+
+function levenshteinDistance(a, b) {
+    const left = normalizeForMatching(a);
+    const right = normalizeForMatching(b);
+
+    if (left === right) return 0;
+    if (!left.length) return right.length;
+    if (!right.length) return left.length;
+
+    const previousRow = Array.from({ length: right.length + 1 }, (_, index) => index);
+
+    for (let i = 1; i <= left.length; i++) {
+        const currentRow = [i];
+        for (let j = 1; j <= right.length; j++) {
+            const insertCost = currentRow[j - 1] + 1;
+            const deleteCost = previousRow[j] + 1;
+            const replaceCost = previousRow[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1);
+            currentRow.push(Math.min(insertCost, deleteCost, replaceCost));
+        }
+        previousRow.splice(0, previousRow.length, ...currentRow);
+    }
+
+    return previousRow[right.length];
+}
+
+function similarityScore(a, b) {
+    const left = normalizeForMatching(a);
+    const right = normalizeForMatching(b);
+    const maxLength = Math.max(left.length, right.length);
+    if (maxLength === 0) return 1;
+
+    const distance = levenshteinDistance(left, right);
+    return 1 - (distance / maxLength);
+}
+
+function getFuzzySearchPrefixes(rawName) {
+    const normalized = normalizeForMatching(rawName);
+    if (!normalized) return [];
+
+    const prefixes = new Set();
+    prefixes.add(normalized.slice(0, 4));
+    prefixes.add(normalized.slice(0, 5));
+
+    const firstWord = normalized.split(/\s+/)[0];
+    prefixes.add(firstWord.slice(0, 4));
+    prefixes.add(firstWord.slice(0, 5));
+
+    return [...prefixes].filter(prefix => prefix.length >= 3);
+}
+
+function isGreenwashingClaim(productContext) {
+    const text = normalizeForMatching([
+        productContext?.name,
+        productContext?.brand,
+        productContext?.description,
+        productContext?.category,
+    ].filter(Boolean).join(' '));
+
+    return /(?:NATURAL|BIO|ORGANIC|ECO|GREEN|CLEAN|PURE|VEGAN)/.test(text);
+}
+
+function getGreenwashingAlert(productContext, ingredients) {
+    if (!productContext || !isGreenwashingClaim(productContext)) return null;
+
+    const controversialMatches = ingredients.filter(ing => {
+        const name = ing?.name || '';
+        const watchlist = checkCommercialWatchlist(name);
+        return Boolean(watchlist);
+    });
+
+    if (controversialMatches.length === 0) return null;
+
+    const triggerNames = [...new Set(controversialMatches.map(ing => ing.name).filter(Boolean))];
+
+    return {
+        flagged: true,
+        triggerTerms: ['Natural', 'Bio', 'Organic'],
+        triggerIngredients: triggerNames,
+        messageRo: `Potential greenwashing: produsul este promovat ca "natural/bio/organic", dar contine ingrediente controversate precum ${triggerNames.slice(0, 3).join(', ')}.`,
+        messageEn: `Potential greenwashing: this product is marketed as "natural/bio/organic", but it contains controversial ingredients such as ${triggerNames.slice(0, 3).join(', ')}.`,
+    };
+}
+
+function getScoreCapDetails(ingredients) {
+    if (!ingredients || ingredients.length === 0) {
+        return { scoreCap: 0, scoreCapReason: null, scoreCapIngredient: null };
+    }
+
+    const maxRiskLevel = Math.max(...ingredients.map(i => i.riskLevel));
+    const worstIngredient = ingredients.find(i => i.riskLevel === maxRiskLevel) || null;
+
+    const scoreCapByWorstIngredient = {
+        5: 20,
+        4: 45,
+        3: 70,
+        2: 85,
+        1: 95,
+        0: 100,
+    };
+
+    let scoreCap = scoreCapByWorstIngredient[maxRiskLevel] ?? 100;
+    let scoreCapReason = null;
+
+    const unknownCount = ingredients.filter(i => i.riskCategory === 'unknown').length;
+    if (unknownCount > ingredients.length / 2) {
+        scoreCap = Math.min(scoreCap, 40);
+        scoreCapReason = 'Prea multe ingrediente neidentificate in baza de date';
+    }
+
+    if (worstIngredient && maxRiskLevel >= 1) {
+        const ingredientNames = ingredients
+            .filter(i => i.riskLevel === maxRiskLevel)
+            .map(i => i.name)
+            .filter(Boolean)
+            .slice(0, 3);
+
+        if (maxRiskLevel === 5) {
+            scoreCapReason = `Ingredient interzis: ${ingredientNames.join(', ')}`;
+        } else if (!scoreCapReason) {
+            scoreCapReason = `Ingredientul cu risc maxim este ${ingredientNames.join(', ')}`;
+        }
+    }
+
+    return {
+        scoreCap,
+        scoreCapReason,
+        scoreCapIngredient: worstIngredient?.name || null,
+    };
 }
 
 // --- Lista de Ingrediente Controversate ---
@@ -351,7 +504,7 @@ function buildDescription(dbDescription, dbFunction) {
  * @param {Object|null} userPreferences - { skin_type: string, allergies: string[] } (optional)
  * @returns {Promise<Object>} - Rezultatul analizei
  */
-export async function analyzeToxicity(ingredientsText, userPreferences = null, lang = 'ro') {
+export async function analyzeToxicity(ingredientsText, userPreferences = null, lang = 'ro', productContext = null) {
     if (!ingredientsText || ingredientsText.trim() === '') {
         return {
             safetyScore: 0,
@@ -545,12 +698,64 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null, l
             if (!hasMatch) unknownOriginalNames.push(name);
         }
 
+        async function findBestFuzzyMatch(rawName) {
+            const prefixes = getFuzzySearchPrefixes(rawName);
+            if (prefixes.length === 0) return null;
+
+            const candidateMap = new Map();
+            for (const prefix of prefixes) {
+                const { data: prefixData, error: prefixError } = await supabase
+                    .from('ingredients')
+                    .select('inci_name, score, description, "Restriction", "Function"')
+                    .ilike('inci_name', `${prefix}%`)
+                    .limit(50);
+
+                if (prefixError) {
+                    console.error(`[FUZZY MATCH] Prefix query failed for ${rawName} (${prefix}%):`, prefixError.message);
+                    continue;
+                }
+
+                for (const candidate of prefixData || []) {
+                    candidateMap.set(candidate.inci_name.toUpperCase(), candidate);
+                }
+            }
+
+            let bestMatch = null;
+            let bestSimilarity = 0;
+            for (const candidate of candidateMap.values()) {
+                const similarity = similarityScore(rawName, candidate.inci_name);
+                if (similarity > bestSimilarity) {
+                    bestSimilarity = similarity;
+                    bestMatch = candidate;
+                }
+            }
+
+            if (bestMatch && bestSimilarity >= 0.9) {
+                console.log(`[FUZZY MATCH] "${rawName}" -> "${bestMatch.inci_name}" (${Math.round(bestSimilarity * 100)}%)`);
+                return bestMatch;
+            }
+
+            return null;
+        }
+
+        for (const name of unknownOriginalNames) {
+            const upperName = name.toUpperCase();
+            if (dbMap.has(upperName)) continue;
+            if (hasAiCache(upperName)) continue;
+
+            const fuzzyMatch = await findBestFuzzyMatch(name);
+            if (fuzzyMatch) {
+                dbMap.set(upperName, fuzzyMatch);
+                addToAiCache(upperName);
+            }
+        }
+
         if (unknownOriginalNames.length > 0) {
             // Filtreaza: exclude ingredientele deja procesate de AI in aceasta sesiune
-            const toAsk = unknownOriginalNames.filter(n => !aiResolvedCache.has(n.toUpperCase()));
+            const toAsk = unknownOriginalNames.filter(n => !hasAiCache(n.toUpperCase()) && !dbMap.has(n.toUpperCase()));
             const cachedSkipped = unknownOriginalNames.length - toAsk.length;
             if (cachedSkipped > 0) {
-                console.log(`[AI RESOLVE] ${cachedSkipped} ingrediente deja procesate de AI (skip din cache)`);
+                console.log(`[AI RESOLVE] ${cachedSkipped} ingrediente deja procesate/fuzzy rezolvate (skip)`);
             }
 
             if (toAsk.length > 0) {
@@ -745,9 +950,12 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null, l
 
     // Calculare scor siguranta
     const score = calculateSafetyScore(ingredientsBreakdown);
+    const scoreCapDetails = getScoreCapDetails(ingredientsBreakdown);
 
     // Generare warning-uri
     const warnings = generateWarnings(ingredientsBreakdown);
+
+    const greenwashingAlert = getGreenwashingAlert(productContext, ingredientsBreakdown);
 
     // Personalizare bazata pe profilul utilizatorului
     const { personalWarnings, scorePenalty } = applyPersonalizedWarnings(ingredientsBreakdown, userPreferences);
@@ -764,6 +972,10 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null, l
         warnings,
         personalWarnings,
         isPersonalized: personalWarnings.length > 0,
+        scoreCap: scoreCapDetails.scoreCap,
+        scoreCapReason: scoreCapDetails.scoreCapReason,
+        scoreCapIngredient: scoreCapDetails.scoreCapIngredient,
+        greenwashingAlert,
         riskSummary: getRiskSummary(personalizedScore),
         _source: 'supabase_cosing'
     };
@@ -776,26 +988,7 @@ export async function analyzeToxicity(ingredientsText, userPreferences = null, l
 function calculateSafetyScore(ingredients) {
     if (ingredients.length === 0) return 0;
 
-    // REGULA CHEIE: ingredientul cel mai rau limiteaza scorul maxim
-    const maxRiskLevel = Math.max(...ingredients.map(i => i.riskLevel));
-
-    // Scor maxim posibil bazat pe cel mai rau ingredient (Stil INCI Beauty)
-    const scoreCapByWorstIngredient = {
-        5: 20,  // Ingredient interzis → scor max 20/100
-        4: 45,  // Risc ridicat (watchlist) → max 45/100
-        3: 70,  // Risc moderat (restrictionat UE) → max 70/100
-        2: 85,  // Risc scazut → max 85/100
-        1: 95,  // Risc minor (colorant/conservant reglementat) → max 95/100
-        0: 100  // Tot safe → poate ajunge 100
-    };
-
-    let scoreCap = scoreCapByWorstIngredient[maxRiskLevel] ?? 100;
-
-    // Penalizare globala: daca peste 50% din ingrediente sunt neidentificate, cappam la 40
-    const unknownCount = ingredients.filter(i => i.riskCategory === 'unknown').length;
-    if (unknownCount > ingredients.length / 2) {
-        scoreCap = Math.min(scoreCap, 40);
-    }
+    const { scoreCap } = getScoreCapDetails(ingredients);
 
     let score = 100;
 
@@ -881,5 +1074,9 @@ export const _testExports = {
     generateWarnings,
     getRiskSummary,
     checkCommercialWatchlist,
-    COMMERCIAL_WATCHLIST
+    COMMERCIAL_WATCHLIST,
+    getScoreCapDetails,
+    levenshteinDistance,
+    similarityScore,
+    getGreenwashingAlert
 };

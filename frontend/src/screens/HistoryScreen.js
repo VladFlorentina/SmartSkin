@@ -9,6 +9,8 @@ export default function HistoryScreen({ navigation }) {
     const [history, setHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [compareMode, setCompareMode] = useState(false);
+    const [selectedBarcodes, setSelectedBarcodes] = useState([]);
 
     // useFocusEffect re-incarca istoricul de fiecare data cand ecranul devine activ
     // (la mount initial, la revenire din ProductScreen dupa o scanare noua, etc.)
@@ -73,22 +75,56 @@ export default function HistoryScreen({ navigation }) {
         const scoreInfo = getScoreIndicator(item.safety_score);
         const productData = item.products || {};
         const scanCount = item.scan_count || 1;
+        const barcode = productData.barcode || null;
+        const isSelected = barcode ? selectedBarcodes.includes(barcode) : false;
+
+        const handlePress = () => {
+            if (!barcode) return;
+
+            if (compareMode) {
+                setSelectedBarcodes(prev => {
+                    if (prev.includes(barcode)) {
+                        return prev.filter(code => code !== barcode);
+                    }
+
+                    if (prev.length >= 2) {
+                        return [prev[1], barcode];
+                    }
+
+                    return [...prev, barcode];
+                });
+                return;
+            }
+
+            navigation.navigate('Product', {
+                barcode,
+                cachedProduct: {
+                    ...productData,
+                    imageUrl: productData.image_url,
+                    analysis: item.products?.analysis || { safetyScore: item.safety_score },
+                }
+            });
+        };
 
         return (
             <TouchableOpacity
-                onPress={() => {
-                    if (!productData.barcode) return;
-                    navigation.navigate('Product', {
-                        barcode: productData.barcode,
-                        cachedProduct: {
-                            ...productData,
-                            imageUrl: productData.image_url,
-                            analysis: productData.analysis || { safetyScore: item.safety_score },
-                        }
-                    });
+                onPress={handlePress}
+                onLongPress={() => {
+                    setCompareMode(true);
+                    if (barcode) {
+                        setSelectedBarcodes(prev => {
+                            if (prev.includes(barcode)) return prev;
+                            if (prev.length >= 2) return [prev[1], barcode];
+                            return [...prev, barcode];
+                        });
+                    }
                 }}
                 className="rounded-3xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
-                style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                style={{
+                    backgroundColor: isSelected ? '#FFF1F2' : colors.card,
+                    borderWidth: 1,
+                    borderColor: isSelected ? '#FB7185' : colors.border,
+                }}
             >
                 <View className="flex-row items-center flex-1">
                     {productData.image_url ? (
@@ -134,21 +170,66 @@ export default function HistoryScreen({ navigation }) {
     return (
         <View className="flex-1" style={{ backgroundColor: colors.bg }}>
             <View
-                className="pt-12 pb-6 px-6 flex-row items-center border-b shadow-sm z-10"
+                className="pt-12 pb-6 px-6 flex-row items-center justify-between border-b shadow-sm z-10"
                 style={{ backgroundColor: colors.header, borderColor: colors.border }}
             >
-                <TouchableOpacity
-                    onPress={() => navigation.goBack()}
-                    className="w-10 h-10 rounded-full items-center justify-center mr-4"
-                    style={{ backgroundColor: colors.bg }}
-                >
-                    <Text className="text-brand-500 font-bold text-lg">←</Text>
-                </TouchableOpacity>
-                <View>
-                    <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('historyTitle')}</Text>
-                    <Text className="text-xs font-medium" style={{ color: colors.textSub }}>{t('historySub')}</Text>
+                <View className="flex-row items-center flex-1 pr-3">
+                    <TouchableOpacity
+                        onPress={() => navigation.goBack()}
+                        className="w-10 h-10 rounded-full items-center justify-center mr-4"
+                        style={{ backgroundColor: colors.bg }}
+                    >
+                        <Text className="text-brand-500 font-bold text-lg">←</Text>
+                    </TouchableOpacity>
+                    <View className="flex-1">
+                        <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('historyTitle')}</Text>
+                        <Text className="text-xs font-medium" style={{ color: colors.textSub }}>{t('historySub')}</Text>
+                    </View>
                 </View>
+
+                <TouchableOpacity
+                    onPress={() => {
+                        setCompareMode(prev => !prev);
+                        setSelectedBarcodes([]);
+                    }}
+                    className="px-3 py-2 rounded-2xl"
+                    style={{ backgroundColor: compareMode ? '#FB7185' : colors.bg }}
+                >
+                    <Text className="text-xs font-bold" style={{ color: compareMode ? '#FFFFFF' : colors.text }}>
+                        {compareMode ? (lang === 'en' ? 'Cancel' : 'Anulează') : (lang === 'en' ? 'Compare' : 'Compară')}
+                    </Text>
+                </TouchableOpacity>
             </View>
+
+            {compareMode && (
+                <View className="px-6 pt-4 pb-2" style={{ backgroundColor: colors.bg }}>
+                    <View className="rounded-3xl p-4 border" style={{ backgroundColor: '#FFF1F2', borderColor: '#FDA4AF' }}>
+                        <Text className="font-bold mb-1" style={{ color: '#9D174D' }}>
+                            {lang === 'en' ? 'Comparison mode' : 'Mod comparație'}
+                        </Text>
+                        <Text className="text-sm leading-relaxed" style={{ color: '#BE185D' }}>
+                            {lang === 'en'
+                                ? 'Tap two products from history to compare their risk profiles.'
+                                : 'Atinge două produse din istoric pentru a compara profilele lor de risc.'}
+                        </Text>
+                        <Text className="text-xs mt-2" style={{ color: '#9D174D' }}>
+                            {selectedBarcodes.length}/2 {lang === 'en' ? 'selected' : 'selectate'}
+                        </Text>
+                    </View>
+
+                    {selectedBarcodes.length === 2 && (
+                        <TouchableOpacity
+                            className="mt-3 rounded-2xl py-4 items-center"
+                            style={{ backgroundColor: '#FB7185' }}
+                            onPress={() => navigation.navigate('Compare', { barcodes: selectedBarcodes })}
+                        >
+                            <Text className="text-white font-bold text-base">
+                                {lang === 'en' ? 'Compare selected products' : 'Compară produsele selectate'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
 
             {loading ? (
                 <View className="flex-1 justify-center items-center">
