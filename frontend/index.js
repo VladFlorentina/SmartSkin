@@ -1,3 +1,13 @@
+import 'react-native-url-polyfill/auto';
+import * as Crypto from 'expo-crypto';
+
+if (typeof global.crypto !== 'object') {
+  global.crypto = {};
+}
+if (typeof global.crypto.getRandomValues !== 'function') {
+  global.crypto.getRandomValues = Crypto.getRandomValues;
+}
+
 import { registerRootComponent } from 'expo';
 
 import App from './App';
