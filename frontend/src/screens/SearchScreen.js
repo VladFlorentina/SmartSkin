@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, TextInput, FlatList, TouchableOpacity,
     ActivityIndicator, Image, Alert
@@ -25,6 +25,15 @@ export default function SearchScreen({ navigation }) {
     const [error, setError] = useState(null);
     const { colors, t } = useApp();
     const searchIdRef = useRef(0); // pentru a evita race conditions intre cautari rapide
+    const searchTimeoutRef = useRef(null);
+
+    useEffect(() => {
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const SOURCE_BADGE = {
         cache:  { label: t('searchBadgeAnalyzed'), bg: 'bg-sage-100', text: 'text-sage-600', border: 'border-sage-200' },
@@ -36,13 +45,13 @@ export default function SearchScreen({ navigation }) {
         setQuery(text);
         
         // Clear orice timer anterior pentru autocomplete
-        if (window.searchTimeout) {
-            clearTimeout(window.searchTimeout);
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
         }
         
         // Seteaza noul timer (debounce de 400ms)
         if (text.trim().length >= 2) {
-            window.searchTimeout = setTimeout(() => {
+            searchTimeoutRef.current = setTimeout(() => {
                 handleSearch(text);
             }, 400);
         } else {

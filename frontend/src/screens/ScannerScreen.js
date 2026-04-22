@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import Button from '../components/Button';
@@ -19,7 +19,14 @@ export default function ScannerScreen({ navigation }) {
 
     // If permissions are still loading
     if (!permission) {
-        return <View className="flex-1" style={{ backgroundColor: colors.bg }} />;
+        return (
+            <View className="flex-1 items-center justify-center" style={{ backgroundColor: colors.bg }}>
+                <ActivityIndicator size="large" color="#FB7185" />
+                <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>
+                    {lang === 'en' ? 'Loading camera permissions...' : 'Se incarca permisiunile camerei...'}
+                </Text>
+            </View>
+        );
     }
 
     // If permission not granted
