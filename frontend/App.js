@@ -33,6 +33,8 @@ const AuthStack = createNativeStackNavigator();
 const AppStack = createNativeStackNavigator();
 const GuestStack = createNativeStackNavigator();
 
+import MainTabNavigator from './src/navigation/MainTabNavigator';
+
 // Stack pentru utilizatori neautentificati (Login/Register)
 function AuthNavigator() {
   return (
@@ -47,15 +49,12 @@ function AuthNavigator() {
 function AppNavigator() {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
-      <AppStack.Screen name="Home" component={HomeScreen} />
+      <AppStack.Screen name="MainTabs" component={MainTabNavigator} />
       <AppStack.Screen name="Scanner" component={ScannerScreen} />
-      <AppStack.Screen name="Search" component={SearchScreen} />
       <AppStack.Screen name="Product" component={ProductScreen} />
       <AppStack.Screen name="ManualAdd" component={ManualAddScreen} />
-      <AppStack.Screen name="History" component={HistoryScreen} />
       <AppStack.Screen name="Compare" component={CompareScreen} />
       <AppStack.Screen name="Chat" component={ChatScreen} />
-      <AppStack.Screen name="Profile" component={ProfileScreen} />
     </AppStack.Navigator>
   );
 }
@@ -102,8 +101,8 @@ export default function App() {
   if (loading) {
     return (
       <SafeAreaProvider>
-        <View className="flex-1 justify-center items-center bg-brand-50">
-          <ActivityIndicator size="large" color="#FB7185" />
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: '#FDFBF7' }}>
+          <ActivityIndicator size="large" color="#8A5A44" />
         </View>
       </SafeAreaProvider>
     );

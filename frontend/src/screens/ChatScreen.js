@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Markdown from 'react-native-markdown-display';
 import { sendChatMessage } from '../lib/api';
 import { useApp } from '../lib/AppContext';
+import { Ionicons } from '@expo/vector-icons';
 import { TextInput } from 'react-native';
 
 export default function ChatScreen({ navigation, route }) {
@@ -60,8 +61,8 @@ export default function ChatScreen({ navigation, route }) {
     if (isGuest) {
         return (
             <View className="flex-1 justify-center items-center p-8" style={{ backgroundColor: colors.bg }}>
-                <View className="bg-brand-50 w-40 h-40 rounded-full items-center justify-center mb-6">
-                    <Text className="text-6xl">💬</Text>
+                <View className="w-40 h-40 rounded-full items-center justify-center mb-6" style={{ backgroundColor: colors.primaryLight }}>
+                    <Ionicons name="chatbubbles-outline" size={64} color={colors.primary} />
                 </View>
                 <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
                     {lang === 'en' ? "Account Required" : "Cont Necesar pentru Chat"}
@@ -155,8 +156,8 @@ export default function ChatScreen({ navigation, route }) {
     return (
         <SafeAreaView className="flex-1" style={{ backgroundColor: colors.bg }}>
         <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+            behavior="padding"
+            keyboardVerticalOffset={0}
             className="flex-1"
             style={{ backgroundColor: colors.bg }}
         >
@@ -170,7 +171,7 @@ export default function ChatScreen({ navigation, route }) {
                     className="w-10 h-10 rounded-full items-center justify-center mr-4"
                     style={{ backgroundColor: colors.bg }}
                 >
-                    <Text className="text-brand-500 font-bold text-lg">←</Text>
+                    <Ionicons name="arrow-back" size={20} color={colors.primary} />
                 </TouchableOpacity>
                 <View>
                     <Text className="text-lg font-bold" style={{ color: colors.text }}>CosmetiBot</Text>
@@ -234,7 +235,7 @@ export default function ChatScreen({ navigation, route }) {
                     onPress={handleSend}
                     disabled={isLoading || !inputText.trim()}
                     className="w-12 h-12 rounded-full items-center justify-center"
-                    style={{ backgroundColor: isLoading || !inputText.trim() ? '#F0D9E0' : '#FB7185' }}
+                    style={{ backgroundColor: isLoading || !inputText.trim() ? colors.border : colors.primary }}
                 >
                     {isLoading ? (
                         <ActivityIndicator color="white" size="small" />

@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator } from
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchUserHistory } from '../lib/api';
 import { useApp } from '../lib/AppContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function HistoryScreen({ navigation }) {
     const { t, colors, lang, isGuest, setIsGuest } = useApp();
@@ -36,8 +37,8 @@ export default function HistoryScreen({ navigation }) {
     if (isGuest) {
         return (
             <View className="flex-1 justify-center items-center p-8" style={{ backgroundColor: colors.bg }}>
-                <View className="bg-brand-50 w-40 h-40 rounded-full items-center justify-center mb-6">
-                    <Text className="text-6xl">🔒</Text>
+                <View className="w-40 h-40 rounded-full items-center justify-center mb-6" style={{ backgroundColor: colors.primaryLight }}>
+                    <Ionicons name="lock-closed" size={64} color={colors.primary} />
                 </View>
                 <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
                     {lang === 'en' ? "Account Required" : "Cont Necesar"}
@@ -48,10 +49,11 @@ export default function HistoryScreen({ navigation }) {
                         : "Pentru a salva istoricul și a primi recomandări personalizate, creează un cont gratuit!"}
                 </Text>
                 <TouchableOpacity 
-                    className="bg-brand-500 py-4 px-8 rounded-full shadow-sm"
+                    className="py-4 px-8 rounded-full shadow-sm"
+                    style={{ backgroundColor: colors.primary }}
                     onPress={() => setIsGuest(false)}
                 >
-                    <Text className="text-white font-bold text-base">
+                    <Text className="font-bold text-base" style={{ color: colors.bg }}>
                         {lang === 'en' ? "Create Account" : "Creează Cont"}
                     </Text>
                 </TouchableOpacity>
@@ -60,9 +62,9 @@ export default function HistoryScreen({ navigation }) {
     }
 
     const getScoreIndicator = (score) => {
-        if (score >= 80) return { emoji: '🌱', color: 'text-emerald-500', bg: 'bg-emerald-50' };
-        if (score >= 40) return { emoji: '⚠️', color: 'text-amber-500', bg: 'bg-amber-50' };
-        return { emoji: '❌', color: 'text-rose-500', bg: 'bg-rose-50' };
+        if (score >= 80) return { color: colors.primary, bg: colors.primaryLight };
+        if (score >= 40) return { color: colors.textSub, bg: colors.border };
+        return { color: colors.bg, bg: colors.text };
     };
 
     const formatDate = (isoString) => {
@@ -121,9 +123,9 @@ export default function HistoryScreen({ navigation }) {
                 }}
                 className="rounded-3xl p-4 mb-4 flex-row items-center justify-between shadow-sm"
                 style={{
-                    backgroundColor: isSelected ? '#FFF1F2' : colors.card,
+                    backgroundColor: isSelected ? colors.primaryLight : colors.card,
                     borderWidth: 1,
-                    borderColor: isSelected ? '#FB7185' : colors.border,
+                    borderColor: isSelected ? colors.primary : colors.border,
                 }}
             >
                 <View className="flex-row items-center flex-1">
@@ -146,20 +148,21 @@ export default function HistoryScreen({ navigation }) {
                             {t('historyScannedAt')}: {formatDate(item.scanned_at)}
                         </Text>
                         {scanCount > 1 && (
-                            <View className="mt-1.5 self-start bg-rose-100 border border-rose-200 rounded-full px-2 py-0.5">
-                                <Text className="text-[10px] font-bold text-rose-500">
-                                    🕒 {scanCount} {scanCount === 1 ? t('historyScanCount1') : t('historyScanCountN')}
+                            <View className="mt-1.5 self-start rounded-full px-2 py-0.5 border flex-row items-center" style={{ backgroundColor: colors.bg, borderColor: colors.border }}>
+                                <Ionicons name="time" size={10} color={colors.textSub} style={{ marginRight: 4 }} />
+                                <Text className="text-[10px] font-bold" style={{ color: colors.textSub }}>
+                                    {scanCount} {scanCount === 1 ? t('historyScanCount1') : t('historyScanCountN')}
                                 </Text>
                             </View>
                         )}
                     </View>
                 </View>
 
-                <View className={`items-center justify-center rounded-2xl ml-4 px-3 py-2 ${scoreInfo.bg}`}>
-                    <Text className={`font-black text-lg ${scoreInfo.color}`}>
+                <View className="items-center justify-center rounded-2xl ml-4 px-3 py-2" style={{ backgroundColor: scoreInfo.bg }}>
+                    <Text className="font-black text-lg" style={{ color: scoreInfo.color }}>
                         {item.safety_score}
                     </Text>
-                    <Text className="text-[10px] opacity-70 mt-1 uppercase tracking-widest text-brand-500 font-bold">
+                    <Text className="text-[10px] opacity-70 mt-1 uppercase tracking-widest font-bold" style={{ color: scoreInfo.color }}>
                         {t('historyScore')}
                     </Text>
                 </View>
@@ -179,7 +182,7 @@ export default function HistoryScreen({ navigation }) {
                         className="w-10 h-10 rounded-full items-center justify-center mr-4"
                         style={{ backgroundColor: colors.bg }}
                     >
-                        <Text className="text-brand-500 font-bold text-lg">←</Text>
+                        <Ionicons name="arrow-back" size={20} color={colors.text} />
                     </TouchableOpacity>
                     <View className="flex-1">
                         <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('historyTitle')}</Text>
@@ -192,10 +195,10 @@ export default function HistoryScreen({ navigation }) {
                         setCompareMode(prev => !prev);
                         setSelectedBarcodes([]);
                     }}
-                    className="px-3 py-2 rounded-2xl"
-                    style={{ backgroundColor: compareMode ? '#FB7185' : colors.bg }}
+                    className="px-3 py-2 rounded-2xl border"
+                    style={{ backgroundColor: compareMode ? colors.primary : colors.bg, borderColor: colors.primary }}
                 >
-                    <Text className="text-xs font-bold" style={{ color: compareMode ? '#FFFFFF' : colors.text }}>
+                    <Text className="text-xs font-bold" style={{ color: compareMode ? colors.bg : colors.primary }}>
                         {compareMode ? (lang === 'en' ? 'Cancel' : 'Anulează') : (lang === 'en' ? 'Compare' : 'Compară')}
                     </Text>
                 </TouchableOpacity>
@@ -203,16 +206,16 @@ export default function HistoryScreen({ navigation }) {
 
             {compareMode && (
                 <View className="px-6 pt-4 pb-2" style={{ backgroundColor: colors.bg }}>
-                    <View className="rounded-3xl p-4 border" style={{ backgroundColor: '#FFF1F2', borderColor: '#FDA4AF' }}>
-                        <Text className="font-bold mb-1" style={{ color: '#9D174D' }}>
+                    <View className="rounded-3xl p-4 border" style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}>
+                        <Text className="font-bold mb-1" style={{ color: colors.primary }}>
                             {lang === 'en' ? 'Comparison mode' : 'Mod comparație'}
                         </Text>
-                        <Text className="text-sm leading-relaxed" style={{ color: '#BE185D' }}>
+                        <Text className="text-sm leading-relaxed" style={{ color: colors.textSub }}>
                             {lang === 'en'
                                 ? 'Tap two products from history to compare their risk profiles.'
                                 : 'Atinge două produse din istoric pentru a compara profilele lor de risc.'}
                         </Text>
-                        <Text className="text-xs mt-2" style={{ color: '#9D174D' }}>
+                        <Text className="text-xs mt-2" style={{ color: colors.text }}>
                             {selectedBarcodes.length}/2 {lang === 'en' ? 'selected' : 'selectate'}
                         </Text>
                     </View>
@@ -220,10 +223,10 @@ export default function HistoryScreen({ navigation }) {
                     {selectedBarcodes.length === 2 && (
                         <TouchableOpacity
                             className="mt-3 rounded-2xl py-4 items-center"
-                            style={{ backgroundColor: '#FB7185' }}
+                            style={{ backgroundColor: colors.primary }}
                             onPress={() => navigation.navigate('Compare', { barcodes: selectedBarcodes })}
                         >
-                            <Text className="text-white font-bold text-base">
+                            <Text className="font-bold text-base" style={{ color: colors.bg }}>
                                 {lang === 'en' ? 'Compare selected products' : 'Compară produsele selectate'}
                             </Text>
                         </TouchableOpacity>
@@ -233,21 +236,21 @@ export default function HistoryScreen({ navigation }) {
 
             {loading ? (
                 <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#FB7185" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                     <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>{t('historyLoadingText')}</Text>
                 </View>
             ) : error ? (
                 <View className="flex-1 items-center justify-center px-6">
-                    <Text className="text-2xl mb-4">😔</Text>
+                    <Ionicons name="alert-circle-outline" size={64} color={colors.primary} style={{ marginBottom: 16 }} />
                     <Text className="font-bold text-center mb-2" style={{ color: colors.text }}>{error}</Text>
-                    <TouchableOpacity onPress={loadHistory} className="mt-4 bg-brand-100 px-6 py-3 rounded-2xl">
-                        <Text className="text-brand-600 font-bold text-center">{t('historyRetry')}</Text>
+                    <TouchableOpacity onPress={loadHistory} className="mt-4 px-6 py-3 rounded-2xl" style={{ backgroundColor: colors.primaryLight }}>
+                        <Text className="font-bold text-center" style={{ color: colors.primary }}>{t('historyRetry')}</Text>
                     </TouchableOpacity>
                 </View>
             ) : history.length === 0 ? (
                 <View className="flex-1 justify-center items-center p-8">
-                    <View className="bg-brand-50 w-40 h-40 rounded-full items-center justify-center mb-6">
-                        <Text className="text-6xl">✨🧴</Text>
+                    <View className="w-40 h-40 rounded-full items-center justify-center mb-6" style={{ backgroundColor: colors.primaryLight }}>
+                        <Ionicons name="sparkles-outline" size={64} color={colors.primary} />
                     </View>
                     <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
                         {lang === 'en' ? "Your history is empty" : "Istoricul tău este gol momentan"}
@@ -258,11 +261,13 @@ export default function HistoryScreen({ navigation }) {
                             : "Scanează primul tău produs cosmetic pentru a începe să îți construiești profilul de siguranță!"}
                     </Text>
                     <TouchableOpacity 
-                        className="bg-brand-500 py-4 px-8 rounded-full shadow-sm"
+                        className="py-4 px-8 rounded-full shadow-sm flex-row items-center"
+                        style={{ backgroundColor: colors.primary }}
                         onPress={() => navigation.navigate('Scanner')}
                     >
-                        <Text className="text-white font-bold text-base">
-                            {lang === 'en' ? "📸 Scan a Product" : "📸 Scanează un Produs"}
+                        <Ionicons name="camera" size={20} color={colors.bg} style={{ marginRight: 8 }} />
+                        <Text className="font-bold text-base" style={{ color: colors.bg }}>
+                            {lang === 'en' ? "Scan a Product" : "Scanează un Produs"}
                         </Text>
                     </TouchableOpacity>
                 </View>

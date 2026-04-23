@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useApp } from '../lib/AppContext';
 
@@ -8,11 +9,11 @@ export default function ProfileScreen({ navigation }) {
     const { t, colors, lang, setLanguage, isDark, toggleDark, setIsGuest } = useApp();
 
     const SKIN_TYPES = [
-        { key: 'normal', label: t('skinTypeNormal'), emoji: '🌿' },
-        { key: 'dry', label: t('skinTypeDry'), emoji: '🏜️' },
-        { key: 'oily', label: t('skinTypeOily'), emoji: '💧' },
-        { key: 'combination', label: t('skinTypeCombination'), emoji: '🔄' },
-        { key: 'sensitive', label: t('skinTypeSensitive'), emoji: '🌸' },
+        { key: 'normal', label: t('skinTypeNormal') },
+        { key: 'dry', label: t('skinTypeDry') },
+        { key: 'oily', label: t('skinTypeOily') },
+        { key: 'combination', label: t('skinTypeCombination') },
+        { key: 'sensitive', label: t('skinTypeSensitive') },
     ];
 
     const COMMON_ALLERGIES = [
@@ -96,7 +97,7 @@ export default function ProfileScreen({ navigation }) {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.bg }}>
-                <ActivityIndicator size="large" color="#FB7185" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>{t('profileLoadingText')}</Text>
             </View>
         );
@@ -114,7 +115,7 @@ export default function ProfileScreen({ navigation }) {
                     className="w-10 h-10 rounded-full items-center justify-center mr-4"
                     style={{ backgroundColor: colors.bg }}
                 >
-                    <Text className="text-brand-500 font-bold text-lg">←</Text>
+                    <Text className="font-bold text-lg" style={{ color: colors.primary }}>←</Text>
                 </TouchableOpacity>
                 <View>
                     <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('profileTitle')}</Text>
@@ -122,12 +123,12 @@ export default function ProfileScreen({ navigation }) {
                 </View>
             </View>
 
-            <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 60 }}>
+            <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 130 }}>
                 {/* Info utilizator */}
                 <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
                     <View className="items-center mb-4">
                         <View className="w-20 h-20 rounded-full items-center justify-center mb-3" style={{ backgroundColor: colors.border }}>
-                            <Text className="text-3xl">👤</Text>
+                            <Ionicons name="person" size={40} color={colors.textSub} />
                         </View>
                         <Text className="text-xl font-bold" style={{ color: colors.text }}>{userName || t('profileDefaultUser')}</Text>
                         <Text className="text-sm" style={{ color: colors.textSub }}>{userEmail}</Text>
@@ -138,7 +139,7 @@ export default function ProfileScreen({ navigation }) {
                 <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
                     <Text
                         className="text-sm font-bold uppercase tracking-wider mb-5"
-                        style={{ color: '#FB7185' }}
+                        style={{ color: colors.primary }}
                     >
                         {t('profileSettings')}
                     </Text>
@@ -152,20 +153,22 @@ export default function ProfileScreen({ navigation }) {
                             {t('profileLangLabel')}
                         </Text>
                         <View className="flex-row" style={{ gap: 8 }}>
-                            {[{ code: 'ro', flag: '🇷🇴', label: 'RO' }, { code: 'en', flag: '🇬🇧', label: 'EN' }].map(({ code, flag, label }) => (
+                            {[{ code: 'ro', label: 'RO' }, { code: 'en', label: 'EN' }].map(({ code, label }) => (
                                 <TouchableOpacity
                                     key={code}
                                     onPress={() => setLanguage(code)}
                                     className="px-3 py-2 rounded-2xl"
                                     style={{
-                                        backgroundColor: lang === code ? '#FB7185' : colors.border,
+                                        backgroundColor: lang === code ? colors.primary : colors.bg,
+                                        borderWidth: 1,
+                                        borderColor: lang === code ? colors.primary : colors.border
                                     }}
                                 >
                                     <Text
                                         className="font-bold text-sm"
                                         style={{ color: lang === code ? '#FFF' : colors.textSub }}
                                     >
-                                        {flag} {label}
+                                        {label}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -185,7 +188,7 @@ export default function ProfileScreen({ navigation }) {
                         <Switch
                             value={isDark}
                             onValueChange={toggleDark}
-                            trackColor={{ false: colors.switchTrack, true: '#FB7185' }}
+                            trackColor={{ false: colors.switchTrack, true: colors.primary }}
                             thumbColor={colors.switchThumb}
                         />
                     </View>
@@ -193,7 +196,7 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Tip ten */}
                 <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
-                    <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-4">
+                    <Text className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: colors.primary }}>
                         {t('profileSkinType')}
                     </Text>
                     <Text className="text-xs mb-4" style={{ color: colors.textSub }}>
@@ -205,16 +208,16 @@ export default function ProfileScreen({ navigation }) {
                             <TouchableOpacity
                                 key={type.key}
                                 onPress={() => setSkinType(type.key)}
-                                className={`px-4 py-3 rounded-2xl border ${
-                                    skinType === type.key
-                                        ? 'bg-brand-500 border-brand-500'
-                                        : 'bg-brand-50 border-brand-100'
-                                }`}
+                                className="px-4 py-3 rounded-2xl border"
+                                style={{
+                                    backgroundColor: skinType === type.key ? colors.primary : colors.bg,
+                                    borderColor: skinType === type.key ? colors.primary : colors.border
+                                }}
                             >
-                                <Text className={`font-bold text-sm ${
-                                    skinType === type.key ? 'text-white' : 'text-brand-700'
-                                }`}>
-                                    {type.emoji} {type.label}
+                                <Text className="font-bold text-sm" style={{
+                                    color: skinType === type.key ? '#FFF' : colors.text
+                                }}>
+                                    {type.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
@@ -223,7 +226,7 @@ export default function ProfileScreen({ navigation }) {
 
                 {/* Alergii / Sensibilitati */}
                 <View className="rounded-3xl p-6 shadow-md mb-6" style={{ backgroundColor: colors.card }}>
-                    <Text className="text-sm font-bold text-brand-700 uppercase tracking-wider mb-4">
+                    <Text className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: colors.primary }}>
                         {t('profileAllergies')}
                     </Text>
                     <Text className="text-xs mb-4" style={{ color: colors.textSub }}>
@@ -237,15 +240,15 @@ export default function ProfileScreen({ navigation }) {
                                 <TouchableOpacity
                                     key={allergy.key}
                                     onPress={() => toggleAllergy(allergy.key)}
-                                    className={`px-4 py-2 rounded-2xl border ${
-                                        isSelected
-                                            ? 'bg-rose-500 border-rose-500'
-                                            : 'bg-brand-50 border-brand-100'
-                                    }`}
+                                    className="px-4 py-2 rounded-2xl border"
+                                    style={{
+                                        backgroundColor: isSelected ? colors.primary : colors.bg,
+                                        borderColor: isSelected ? colors.primary : colors.border
+                                    }}
                                 >
-                                    <Text className={`text-sm font-medium ${
-                                        isSelected ? 'text-white' : 'text-brand-700'
-                                    }`}>
+                                    <Text className="text-sm font-medium" style={{
+                                        color: isSelected ? '#FFF' : colors.text
+                                    }}>
                                         {isSelected ? '✓ ' : ''}{allergy.label}
                                     </Text>
                                 </TouchableOpacity>

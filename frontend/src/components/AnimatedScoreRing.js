@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, Animated } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 import { useApp } from '../lib/AppContext';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -10,20 +11,21 @@ const STROKE_WIDTH = 12;
 const RADIUS = (SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function getScoreStyle(score) {
-    if (score >= 80) return { stroke: '#4ADE80', color: '#16A34A', key: 'scoreLabelSafe' };
-    if (score >= 40) return { stroke: '#F97316', color: '#C2410C', key: 'scoreLabelModerate' };
-    return { stroke: '#D97AAA', color: '#A63D75', key: 'scoreLabelRisk' };
+function getScoreStyle(score, colors) {
+    let key = 'scoreLabelSafe';
+    if (score < 80) key = 'scoreLabelModerate';
+    if (score < 40) key = 'scoreLabelRisk';
+    return { stroke: colors.primary, color: colors.text, key };
 }
 
-function getScoreEmoji(score) {
-    if (score >= 80) return '🌱';
-    if (score >= 40) return '⚠️';
-    return '❌';
+function getScoreIcon(score) {
+    if (score >= 80) return 'checkmark-circle';
+    if (score >= 40) return 'warning';
+    return 'alert-circle';
 }
 
 export default function AnimatedScoreRing({ score = 0 }) {
-    const { t } = useApp();
+    const { t, colors } = useApp();
     const progress = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -39,7 +41,7 @@ export default function AnimatedScoreRing({ score = 0 }) {
         outputRange: [CIRCUMFERENCE, 0],
     });
 
-    const style = getScoreStyle(score);
+    const style = getScoreStyle(score, colors);
 
     return (
         <View style={{ alignItems: 'center', justifyContent: 'center' }}>
@@ -86,8 +88,8 @@ export default function AnimatedScoreRing({ score = 0 }) {
             </View>
 
             {/* Label sub cerc */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 }}>
-                <Text style={{ fontSize: 14 }}>{getScoreEmoji(score)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6 }}>
+                <Ionicons name={getScoreIcon(score)} size={16} color={style.color} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: style.color, letterSpacing: 0.5 }}>
                     {t(style.key)}
                 </Text>

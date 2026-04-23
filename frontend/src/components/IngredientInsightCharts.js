@@ -3,72 +3,72 @@ import { View, Text } from 'react-native';
 import Svg, { Circle, Line, Path, Polygon, Text as SvgText } from 'react-native-svg';
 
 const CATEGORY_META = {
-    safe: { color: '#4ADE80' },
-    restricted: { color: '#F59E0B' },
-    banned: { color: '#FB7185' },
-    unknown: { color: '#CBD5E1' },
+    safe: { color: '#A98467' },
+    restricted: { color: '#8A5A44' },
+    banned: { color: '#5E3A2B' },
+    unknown: { color: '#D6CFC7' },
 };
 
 const FUNCTION_GROUPS = [
     {
         key: 'emollient',
-        color: '#FB7185',
+        color: '#8A5A44',
         labelRo: 'Emolienți',
         labelEn: 'Emollients',
         patterns: ['EMOLLIENT', 'SKIN CONDITIONING', 'OCCLUSIVE', 'SOFTENING'],
     },
     {
         key: 'humectant',
-        color: '#60A5FA',
+        color: '#A98467',
         labelRo: 'Hidratanti',
         labelEn: 'Humectants',
         patterns: ['HUMECTANT', 'MOISTURIZING', 'MOISTURISING', 'HYDRATING', 'WATER BINDING'],
     },
     {
         key: 'preservative',
-        color: '#F97316',
+        color: '#5E3A2B',
         labelRo: 'Conservanți',
         labelEn: 'Preservatives',
         patterns: ['PRESERVATIVE', 'ANTIMICROBIAL', 'ANTISEPTIC', 'PARABEN', 'ISOTHIAZOLINONE', 'FORMALDEHYDE'],
     },
     {
         key: 'surfactant',
-        color: '#A78BFA',
+        color: '#B0A39C',
         labelRo: 'Surfactanți',
         labelEn: 'Surfactants',
         patterns: ['SURFACTANT', 'CLEANSING', 'CLEANING', 'FOAMING', 'DETERGENT'],
     },
     {
         key: 'fragrance',
-        color: '#EC4899',
+        color: '#C8A89A',
         labelRo: 'Parfumuri',
         labelEn: 'Fragrance',
         patterns: ['FRAGRANCE', 'PERFUMING', 'PARFUM', 'AROMA'],
     },
     {
         key: 'active',
-        color: '#10B981',
+        color: '#7A6256',
         labelRo: 'Activi',
         labelEn: 'Actives',
         patterns: ['PEPTIDE', 'RETIN', 'ACID', 'VITAMIN', 'ANTIOXIDANT', 'UV FILTER', 'BRIGHTENING', 'EXFOLIANT'],
     },
     {
         key: 'solvent',
-        color: '#94A3B8',
+        color: '#D6CFC7',
         labelRo: 'Solvenți',
         labelEn: 'Solvents',
         patterns: ['SOLVENT', 'DISSOLVING', 'ALCOHOL'],
     },
     {
         key: 'thickener',
-        color: '#F59E0B',
+        color: '#9A7B66',
         labelRo: 'Texturizanți',
         labelEn: 'Thickeners',
         patterns: ['THICKEN', 'VISCOSITY', 'GELLING', 'STABILIZ', 'FILM FORMING'],
     },
     {
         key: 'other',
-        color: '#CBD5E1',
+        color: '#EAE4DE',
         labelRo: 'Altele',
         labelEn: 'Other',
         patterns: [],
@@ -80,25 +80,25 @@ const RADAR_META = [
         key: 'safety',
         labelRo: 'Siguranță generală',
         labelEn: 'General safety',
-        color: '#4ADE80',
+        color: '#8A5A44',
     },
     {
         key: 'allergy',
         labelRo: 'Protecție alergii',
         labelEn: 'Allergy protection',
-        color: '#F97316',
+        color: '#A98467',
     },
     {
         key: 'eco',
         labelRo: 'Impact eco',
         labelEn: 'Eco impact',
-        color: '#10B981',
+        color: '#5E3A2B',
     },
     {
         key: 'skin',
         labelRo: 'Compatibilitate ten',
         labelEn: 'Skin fit',
-        color: '#FB7185',
+        color: '#C8A89A',
     },
 ];
 
@@ -404,8 +404,8 @@ function RadarChart({ values, colors, lang }) {
 
                     <Polygon
                         points={polygonPoints.map((point) => `${point.x},${point.y}`).join(' ')}
-                        fill="#FB718533"
-                        stroke="#FB7185"
+                        fill="#8A5A4433"
+                        stroke="#8A5A44"
                         strokeWidth={2}
                     />
 

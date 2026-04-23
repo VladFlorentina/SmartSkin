@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { fetchProductDetails } from '../lib/api';
 import { useApp } from '../lib/AppContext';
+import { Ionicons } from '@expo/vector-icons';
 
 function summarizeProduct(product) {
     const ingredients = product?.analysis?.ingredientsBreakdown || [];
@@ -36,13 +37,13 @@ function summarizeProduct(product) {
     };
 }
 
-function MetricPill({ label, value, color, colors }) {
+function MetricPill({ label, value, bg, text, border }) {
     return (
-        <View className="rounded-2xl px-3 py-2 mr-2 mb-2" style={{ backgroundColor: color }}>
-            <Text className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: colors.card }}>
+        <View className="rounded-2xl px-3 py-2 mr-2 mb-2 border" style={{ backgroundColor: bg, borderColor: border || bg }}>
+            <Text className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: text }}>
                 {label}
             </Text>
-            <Text className="text-sm font-black" style={{ color: colors.card }}>
+            <Text className="text-sm font-black" style={{ color: text }}>
                 {value}
             </Text>
         </View>
@@ -63,31 +64,31 @@ function ProductCard({ product, summary, colors, lang, title }) {
             </Text>
 
             <View className="flex-row flex-wrap">
-                <MetricPill label={lang === 'en' ? 'Safety' : 'Siguranță'} value={`${summary.score}/100`} color="#FB7185" colors={colors} />
-                <MetricPill label={lang === 'en' ? 'Ingredients' : 'Ingrediente'} value={summary.ingredientsCount} color="#60A5FA" colors={colors} />
-                <MetricPill label={lang === 'en' ? 'Warnings' : 'Avertizări'} value={summary.warningsCount} color="#F59E0B" colors={colors} />
-                <MetricPill label={lang === 'en' ? 'Banned' : 'Interzise'} value={summary.counts.banned} color="#EF4444" colors={colors} />
-                <MetricPill label={lang === 'en' ? 'Restricted' : 'Restricționate'} value={summary.counts.restricted} color="#F97316" colors={colors} />
-                <MetricPill label={lang === 'en' ? 'Unknown' : 'Necunoscute'} value={summary.counts.unknown} color="#94A3B8" colors={colors} />
+                <MetricPill label={lang === 'en' ? 'Safety' : 'Siguranță'} value={`${summary.score}/100`} bg={colors.primary} text={colors.card} />
+                <MetricPill label={lang === 'en' ? 'Ingredients' : 'Ingrediente'} value={summary.ingredientsCount} bg={colors.bg} text={colors.text} border={colors.border} />
+                <MetricPill label={lang === 'en' ? 'Warnings' : 'Avertizări'} value={summary.warningsCount} bg={colors.bg} text={colors.textSub} border={colors.border} />
+                <MetricPill label={lang === 'en' ? 'Banned' : 'Interzise'} value={summary.counts.banned} bg={colors.primaryLight} text={colors.primary} border={colors.primary} />
+                <MetricPill label={lang === 'en' ? 'Restricted' : 'Restricționate'} value={summary.counts.restricted} bg={colors.bg} text={colors.textMuted} border={colors.border} />
+                <MetricPill label={lang === 'en' ? 'Unknown' : 'Necunoscute'} value={summary.counts.unknown} bg={colors.card} text={colors.textMuted} border={colors.border} />
             </View>
 
             {!!summary.scoreCapReason && (
-                <View className="mt-3 rounded-2xl p-3" style={{ backgroundColor: '#FFF7ED' }}>
-                    <Text className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#C2410C' }}>
+                <View className="mt-3 rounded-2xl p-3 border" style={{ backgroundColor: colors.bg, borderColor: colors.border }}>
+                    <Text className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: colors.primary }}>
                         {lang === 'en' ? 'Score cap' : 'Limită scor'}
                     </Text>
-                    <Text className="text-sm" style={{ color: '#9A3412' }}>
+                    <Text className="text-sm" style={{ color: colors.textSub }}>
                         {summary.scoreCapReason}
                     </Text>
                 </View>
             )}
 
             {!!summary.greenwashingAlert?.flagged && (
-                <View className="mt-3 rounded-2xl p-3" style={{ backgroundColor: '#FFF1F2' }}>
-                    <Text className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: '#BE185D' }}>
+                <View className="mt-3 rounded-2xl p-3 border" style={{ backgroundColor: colors.primaryLight, borderColor: colors.primary }}>
+                    <Text className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: colors.primary }}>
                         {lang === 'en' ? 'Greenwashing alert' : 'Alertă greenwashing'}
                     </Text>
-                    <Text className="text-sm" style={{ color: '#9D174D' }}>
+                    <Text className="text-sm" style={{ color: colors.text }}>
                         {lang === 'en' ? summary.greenwashingAlert.messageEn : summary.greenwashingAlert.messageRo}
                     </Text>
                 </View>
@@ -164,7 +165,7 @@ export default function CompareScreen({ navigation, route }) {
                     className="w-10 h-10 rounded-full items-center justify-center mr-4"
                     style={{ backgroundColor: colors.bg }}
                 >
-                    <Text className="text-brand-500 font-bold text-lg">←</Text>
+                    <Ionicons name="arrow-back" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <View>
                     <Text className="text-2xl font-black" style={{ color: colors.text }}>
@@ -178,25 +179,25 @@ export default function CompareScreen({ navigation, route }) {
 
             {loading ? (
                 <View className="flex-1 items-center justify-center px-6">
-                    <ActivityIndicator size="large" color="#FB7185" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                     <Text className="mt-4 font-medium" style={{ color: colors.textSub }}>
                         {lang === 'en' ? 'Loading comparison...' : 'Încărcăm comparația...'}
                     </Text>
                 </View>
             ) : error ? (
                 <View className="flex-1 items-center justify-center px-6">
-                    <Text className="text-3xl mb-3">😔</Text>
+                    <Ionicons name="alert-circle-outline" size={64} color={colors.primary} style={{ marginBottom: 12 }} />
                     <Text className="text-center font-bold" style={{ color: colors.text }}>
                         {error}
                     </Text>
                 </View>
             ) : (
                 <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }}>
-                    <View className="rounded-3xl p-4 mb-4 border" style={{ backgroundColor: '#FFF7ED', borderColor: '#FDBA74' }}>
-                        <Text className="font-bold mb-1" style={{ color: '#9A3412' }}>
+                    <View className="rounded-3xl p-4 mb-4 border" style={{ backgroundColor: colors.bg, borderColor: colors.border }}>
+                        <Text className="font-bold mb-1" style={{ color: colors.primary }}>
                             {lang === 'en' ? 'Who is safer?' : 'Care este mai sigur?'}
                         </Text>
-                        <Text className="text-sm leading-relaxed" style={{ color: '#B45309' }}>
+                        <Text className="text-sm leading-relaxed" style={{ color: colors.textSub }}>
                             {saferSide === null
                                 ? (lang === 'en' ? 'The products have the same safety score.' : 'Produsele au același scor de siguranță.')
                                 : (lang === 'en'

@@ -145,11 +145,11 @@ export default function LoginScreen({ navigation }) {
                             onPress={() => setLanguage('ro')}
                             className="px-2.5 py-1.5 rounded-xl border"
                             style={{
-                                backgroundColor: lang === 'ro' ? '#FB7185' : colors.bg,
-                                borderColor: lang === 'ro' ? '#FB7185' : colors.border,
+                                backgroundColor: lang === 'ro' ? colors.primary : colors.bg,
+                                borderColor: lang === 'ro' ? colors.primary : colors.border,
                             }}
                         >
-                            <Text className="text-xs font-bold" style={{ color: lang === 'ro' ? '#FFFFFF' : colors.textSub }}>
+                            <Text className="text-xs font-bold" style={{ color: lang === 'ro' ? colors.bg : colors.textSub }}>
                                 RO
                             </Text>
                         </TouchableOpacity>
@@ -157,11 +157,11 @@ export default function LoginScreen({ navigation }) {
                             onPress={() => setLanguage('en')}
                             className="px-2.5 py-1.5 rounded-xl border"
                             style={{
-                                backgroundColor: lang === 'en' ? '#FB7185' : colors.bg,
-                                borderColor: lang === 'en' ? '#FB7185' : colors.border,
+                                backgroundColor: lang === 'en' ? colors.primary : colors.bg,
+                                borderColor: lang === 'en' ? colors.primary : colors.border,
                             }}
                         >
-                            <Text className="text-xs font-bold" style={{ color: lang === 'en' ? '#FFFFFF' : colors.textSub }}>
+                            <Text className="text-xs font-bold" style={{ color: lang === 'en' ? colors.bg : colors.textSub }}>
                                 EN
                             </Text>
                         </TouchableOpacity>

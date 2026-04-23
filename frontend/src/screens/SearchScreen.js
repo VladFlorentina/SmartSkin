@@ -5,14 +5,13 @@ import {
 } from 'react-native';
 import { searchProducts } from '../lib/api';
 import { useApp } from '../lib/AppContext';
+import { Ionicons } from '@expo/vector-icons';
 
-function ScoreBadge({ score }) {
+function ScoreBadge({ score, colors }) {
     if (score === null || score === undefined) return null;
-    const color = score >= 80 ? 'text-sage-600' : score >= 40 ? 'text-peach-600' : 'text-brand-600';
-    const bg    = score >= 80 ? 'bg-sage-50 border-sage-200' : score >= 40 ? 'bg-peach-50 border-peach-200' : 'bg-blush-50 border-blush-200';
     return (
-        <View className={`px-3 py-1 rounded-full border ${bg} ml-2`}>
-            <Text className={`text-xs font-black ${color}`}>{score}/100</Text>
+        <View className="px-3 py-1 rounded-full border ml-2" style={{ backgroundColor: colors.bg, borderColor: colors.primary }}>
+            <Text className="text-xs font-black" style={{ color: colors.primary }}>{score}/100</Text>
         </View>
     );
 }
@@ -36,9 +35,9 @@ export default function SearchScreen({ navigation }) {
     }, []);
 
     const SOURCE_BADGE = {
-        cache:  { label: t('searchBadgeAnalyzed'), bg: 'bg-sage-100', text: 'text-sage-600', border: 'border-sage-200' },
-        obf:    { label: t('searchBadgeCosmetics'), bg: 'bg-sky-100', text: 'text-sky-600', border: 'border-sky-200' },
-        makeup: { label: t('searchBadgeMakeup'), bg: 'bg-blush-100', text: 'text-brand-500', border: 'border-blush-200' },
+        cache:  { label: t('searchBadgeAnalyzed'), bg: colors.bg, text: colors.primary, border: colors.border },
+        obf:    { label: t('searchBadgeCosmetics'), bg: colors.bg, text: colors.textSub, border: colors.border },
+        makeup: { label: t('searchBadgeMakeup'), bg: colors.bg, text: colors.textSub, border: colors.border },
     };
 
     const handleSearchChange = (text) => {
@@ -98,7 +97,6 @@ export default function SearchScreen({ navigation }) {
 
     const renderItem = ({ item }) => {
         const badge = SOURCE_BADGE[item.source] || SOURCE_BADGE.obf;
-        const needsOcr = item.source === 'obf' && item.barcode && (item.safetyScore === null || item.safetyScore === undefined);
         return (
             <TouchableOpacity
                 onPress={() => handleItemPress(item)}
@@ -106,9 +104,8 @@ export default function SearchScreen({ navigation }) {
                 className="rounded-3xl p-4 mb-3 flex-row items-center shadow-sm"
                 style={{
                     backgroundColor: colors.card,
-                    borderWidth: needsOcr ? 1.5 : 1,
-                    borderColor: needsOcr ? '#FCA5A5' : colors.border,
-                    opacity: needsOcr ? 0.92 : 1,
+                    borderWidth: 1,
+                    borderColor: colors.border,
                 }}
             >
                 {/* Imagine */}
@@ -121,7 +118,7 @@ export default function SearchScreen({ navigation }) {
                     />
                 ) : (
                     <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.bg }}>
-                        <Text className="text-2xl">🧴</Text>
+                        <Ionicons name="beaker-outline" size={24} color={colors.textMuted} />
                     </View>
                 )}
 
@@ -138,33 +135,21 @@ export default function SearchScreen({ navigation }) {
 
                     <View className="flex-row items-center mt-2">
                         {/* Badge sursa */}
-                        <View className={`px-2 py-0.5 rounded-full border ${badge.bg} ${badge.border}`}>
-                            <Text className={`text-[10px] font-bold ${badge.text}`}>{badge.label}</Text>
+                        <View className="px-2 py-0.5 rounded-full border" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
+                            <Text className="text-[10px] font-bold" style={{ color: badge.text }}>{badge.label}</Text>
                         </View>
                         {/* Scor daca exista */}
-                        <ScoreBadge score={item.safetyScore} />
-                        {/* Badge OCR necesar */}
-                        {needsOcr && (
-                            <View className="ml-2 bg-rose-50 border border-rose-200 rounded-full px-2 py-0.5 flex-row items-center">
-                                <Text className="text-[10px] font-bold text-rose-400">📸 {t('searchNeedsOcr')}</Text>
-                            </View>
-                        )}
+                        <ScoreBadge score={item.safetyScore} colors={colors} />
                     </View>
                 </View>
 
                 {/* Arrow sau Not analyzed */}
                 <View className="ml-2">
                     {item.barcode ? (
-                        needsOcr ? (
-                            <View className="bg-rose-50 rounded-xl px-2 py-1">
-                                <Text className="text-rose-300 text-[10px] font-medium">📷</Text>
-                            </View>
-                        ) : (
-                            <Text className="text-brand-300 text-lg">›</Text>
-                        )
+                        <Ionicons name="chevron-forward" size={20} color={colors.primary} />
                     ) : (
-                        <View className="bg-brand-50 rounded-xl px-2 py-1">
-                            <Text className="text-brand-300 text-[10px] font-medium">{t('searchNoBarcode')}</Text>
+                        <View className="rounded-xl px-2 py-1" style={{ backgroundColor: colors.bg }}>
+                            <Text className="text-[10px] font-medium" style={{ color: colors.textSub }}>{t('searchNoBarcode')}</Text>
                         </View>
                     )}
                 </View>
@@ -183,7 +168,7 @@ export default function SearchScreen({ navigation }) {
                         className="w-10 h-10 rounded-full items-center justify-center mr-4"
                         style={{ backgroundColor: colors.bg }}
                     >
-                        <Text className="text-brand-500 font-bold text-lg">←</Text>
+                        <Ionicons name="arrow-back" size={20} color={colors.primary} />
                     </TouchableOpacity>
                     <View>
                         <Text className="text-2xl font-black" style={{ color: colors.text }}>{t('searchTitle')}</Text>
@@ -193,7 +178,7 @@ export default function SearchScreen({ navigation }) {
 
                 {/* Search bar */}
                 <View className="flex-row items-center border rounded-2xl px-4" style={{ backgroundColor: colors.inputBg, borderColor: colors.border }}>
-                    <Text className="mr-2" style={{ color: colors.textMuted }}>🔍</Text>
+                    <Ionicons name="search" size={18} color={colors.textMuted} style={{ marginRight: 8 }} />
                     <TextInput
                         className="flex-1 py-3 text-sm"
                         style={{ color: colors.inputText }}
@@ -206,8 +191,8 @@ export default function SearchScreen({ navigation }) {
                         autoCapitalize="none"
                     />
                     {query.length > 0 && (
-                        <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setSearched(false); }}>
-                            <Text className="text-lg ml-2" style={{ color: colors.textMuted }}>✕</Text>
+                        <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setSearched(false); }} className="ml-2">
+                            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
                         </TouchableOpacity>
                     )}
                 </View>
@@ -215,32 +200,32 @@ export default function SearchScreen({ navigation }) {
                 {/* Surse */}
                 <View className="flex-row mt-3" style={{ gap: 6 }}>
                     {[
-                        { label: t('searchBadgeAnalyzed'), bg: 'bg-sage-100', text: 'text-sage-600' },
-                        { label: t('searchBadgeCosmetics'), bg: 'bg-sky-100', text: 'text-sky-600' },
-                        { label: t('searchBadgeMakeup'), bg: 'bg-blush-100', text: 'text-brand-500' },
+                        { label: t('searchBadgeAnalyzed'), bg: colors.bg, text: colors.primary },
+                        { label: t('searchBadgeCosmetics'), bg: colors.bg, text: colors.textSub },
+                        { label: t('searchBadgeMakeup'), bg: colors.bg, text: colors.textSub },
                     ].map(b => (
-                        <View key={b.label} className={`px-3 py-1 rounded-full ${b.bg}`}>
-                            <Text className={`text-[10px] font-bold ${b.text}`}>{b.label}</Text>
+                        <View key={b.label} className="px-3 py-1 rounded-full" style={{ backgroundColor: b.bg, borderWidth: 1, borderColor: colors.border }}>
+                            <Text className="text-[10px] font-bold" style={{ color: b.text }}>{b.label}</Text>
                         </View>
                     ))}
-                    <Text className="text-brand-300 text-[10px] self-center ml-1">{t('searchBadgeLegend')}</Text>
+                    <Text className="text-[10px] self-center ml-1" style={{ color: colors.textSub }}>{t('searchBadgeLegend')}</Text>
                 </View>
             </View>
 
             {/* Rezultate */}
             {loading ? (
                 <View className="flex-1 justify-center items-center">
-                    <ActivityIndicator size="large" color="#D97AAA" />
+                    <ActivityIndicator size="large" color={colors.primary} />
                     <Text className="mt-4 font-medium text-sm" style={{ color: colors.textSub }}>{t('searchLoading')}</Text>
                 </View>
             ) : error ? (
                 <View className="flex-1 justify-center items-center px-6">
-                    <Text className="text-3xl mb-3">😔</Text>
+                    <Ionicons name="alert-circle-outline" size={64} color={colors.primary} style={{ marginBottom: 12 }} />
                     <Text className="font-bold text-center" style={{ color: colors.text }}>{error}</Text>
                 </View>
             ) : !searched ? (
                 <View className="flex-1 justify-center items-center px-8">
-                    <Text className="text-5xl mb-4">🌸</Text>
+                    <Ionicons name="search-outline" size={64} color={colors.primary} style={{ marginBottom: 16 }} />
                     <Text className="font-bold text-center text-lg" style={{ color: colors.text }}>
                         {t('searchEmptyTitle')}
                     </Text>
@@ -250,7 +235,7 @@ export default function SearchScreen({ navigation }) {
                 </View>
             ) : results.length === 0 ? (
                 <View className="flex-1 justify-center items-center px-8">
-                    <Text className="text-4xl mb-4">🔍</Text>
+                    <Ionicons name="search" size={64} color={colors.primary} style={{ marginBottom: 16 }} />
                     <Text className="font-bold text-center" style={{ color: colors.text }}>{t('searchNoResultsFor')} "{query}"</Text>
                     <Text className="text-sm text-center mt-2 leading-relaxed" style={{ color: colors.textSub }}>
                         {t('searchNoResultsSub')}
@@ -264,7 +249,7 @@ export default function SearchScreen({ navigation }) {
                     contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
                     showsVerticalScrollIndicator={false}
                     ListHeaderComponent={
-                        <Text className="text-brand-400 text-xs font-medium mb-3">
+                        <Text className="text-xs font-medium mb-3" style={{ color: colors.textSub }}>
                             {results.length} {t('searchResultsFound')}
                         </Text>
                     }

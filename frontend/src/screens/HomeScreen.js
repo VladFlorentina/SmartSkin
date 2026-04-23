@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../lib/AppContext';
+import { Ionicons } from '@expo/vector-icons';
+import { UserCircle } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function HomeScreen({ navigation }) {
     const [userName, setUserName] = useState('');
-    const { colors, t } = useApp();
+    const { colors, t, isDark, lang } = useApp();
 
     useEffect(() => {
         supabase.auth.getUser()
@@ -15,7 +18,7 @@ export default function HomeScreen({ navigation }) {
                 const name = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
                 setUserName(name);
             })
-            .catch(() => {}); // fail silent - numele nu e critic pentru UX
+            .catch(() => {}); 
     }, []);
 
     const greeting = () => {
@@ -25,103 +28,167 @@ export default function HomeScreen({ navigation }) {
         return t('homeGreetingEvening');
     };
 
-    const ACTION_CARDS = [
-        { key: 'Scanner', icon: '📷', title: t('homeActionScanTitle'), subtitle: t('homeActionScanSub'), bg: 'bg-blush-100', border: 'border-blush-200', iconBg: 'bg-blush-200', text: 'text-brand-600' },
-        { key: 'Search', icon: '🔍', title: t('homeActionSearchTitle'), subtitle: t('homeActionSearchSub'), bg: 'bg-sky-50', border: 'border-sky-200', iconBg: 'bg-sky-100', text: 'text-sky-600' },
-        { key: 'History', icon: '📋', title: t('homeActionHistoryTitle'), subtitle: t('homeActionHistorySub'), bg: 'bg-sage-50', border: 'border-sage-200', iconBg: 'bg-sage-100', text: 'text-sage-600' },
-        { key: 'Profile', icon: '✨', title: t('homeActionProfileTitle'), subtitle: t('homeActionProfileSub'), bg: 'bg-lilac-100', border: 'border-lilac-200', iconBg: 'bg-lilac-200', text: 'text-lilac-600' },
-    ];
-
-    const INFO_ITEMS = [
-        { icon: '🇪🇺', title: t('homeInfoItem1Title'), desc: t('homeInfoItem1Desc'), bg: 'bg-sky-50', border: 'border-sky-100' },
-        { icon: '🤖', title: t('homeInfoItem2Title'), desc: t('homeInfoItem2Desc'), bg: 'bg-blush-50', border: 'border-blush-100' },
-        { icon: '🎯', title: t('homeInfoItem3Title'), desc: t('homeInfoItem3Desc'), bg: 'bg-sage-50', border: 'border-sage-100' },
-        { icon: '💬', title: t('homeInfoItem4Title'), desc: t('homeInfoItem4Desc'), bg: 'bg-lilac-100', border: 'border-lilac-200' },
-    ];
-
     return (
-        <ScrollView className="flex-1" style={{ backgroundColor: colors.bg }} contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-
-            {/* Header */}
-            <View className="px-6 pt-14 pb-8 rounded-b-[40px] shadow-sm" style={{ backgroundColor: colors.card, borderBottomWidth: 1, borderColor: colors.border }}>
-                <View className="flex-row items-center justify-between mb-6">
-                    <View>
-                        <Text className="text-sm font-medium" style={{ color: colors.textSub }}>{greeting()},</Text>
-                        <Text className="text-2xl font-black mt-0.5" style={{ color: colors.text }}>
-                            {userName ? userName.split(' ')[0] : t('homeUserDefault')} 🌸
-                        </Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.bg} />
+            
+            <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+                
+                {/* Top Section */}
+                <View className="px-6 pt-8 pb-6">
+                    <View className="flex-row items-center justify-between mb-8">
+                        <View>
+                            <Text className="text-sm font-semibold tracking-widest uppercase" style={{ color: colors.textSub }}>
+                                {greeting()}
+                            </Text>
+                            <Text className="text-3xl font-bold mt-1" style={{ color: colors.text }}>
+                                {userName ? userName.split(' ')[0] : t('homeUserDefault')}.
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('ProfileTab')}
+                            className="w-12 h-12 items-center justify-center"
+                        >
+                            <UserCircle size={36} color={colors.text} strokeWidth={1.2} />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity
-                        onPress={() => navigation.navigate('Profile')}
-                        className="w-12 h-12 bg-blush-100 rounded-full items-center justify-center border border-blush-200"
+
+                    {/* The Minimalist Hero Scanner */}
+                    <TouchableOpacity 
+                        onPress={() => navigation.navigate('Scanner')}
+                        activeOpacity={0.7}
+                        className="rounded-[32px] p-6 border mt-2"
+                        style={{ 
+                            backgroundColor: colors.card, 
+                            borderColor: colors.border, 
+                            minHeight: 180,
+                            shadowColor: colors.text, 
+                            shadowOpacity: 0.04, 
+                            shadowRadius: 12, 
+                            elevation: 2 
+                        }}
                     >
-                        <Text className="text-xl">👤</Text>
+                        <View className="flex-row items-start justify-between mb-6">
+                            <View className="w-14 h-14 rounded-2xl items-center justify-center" style={{ backgroundColor: colors.primaryLight }}>
+                                <Ionicons name="scan" size={26} color={colors.primary} />
+                            </View>
+                            
+                            <View className="px-3 py-1.5 rounded-full" style={{ backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border }}>
+                                <Text className="text-xs font-bold tracking-widest uppercase" style={{ color: colors.primary }}>
+                                    AI SCAN
+                                </Text>
+                            </View>
+                        </View>
+                        
+                        <View>
+                            <Text className="text-2xl font-bold mb-2 tracking-wide" style={{ color: colors.text }}>
+                                {lang === 'en' ? 'Scan Product' : 'Scanează Produsul'}
+                            </Text>
+                            <Text className="text-sm leading-relaxed" style={{ color: colors.textSub }}>
+                                {lang === 'en'
+                                    ? 'Analyze ingredients instantly using our AI and the European CosIng database.'
+                                    : 'Analizează instantaneu ingredientele folosind inteligența artificială și baza de date europeană CosIng.'}
+                            </Text>
+                        </View>
                     </TouchableOpacity>
                 </View>
 
-                {/* Banner tagline */}
-                <View className="rounded-3xl p-5" style={{ backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border }}>
-                    <Text className="font-black text-lg leading-snug" style={{ color: colors.text }}>
-                        {t('homeBannerTitle')}
-                    </Text>
-                    <Text className="text-sm mt-2 leading-relaxed" style={{ color: colors.textSub }}>
-                        {t('homeBannerSub')}
-                    </Text>
-                </View>
-            </View>
-
-            {/* Actiuni rapide */}
-            <View className="px-6 mt-8">
-                <Text className="font-black text-lg mb-4" style={{ color: colors.text }}>{t('homeActionsTitle')}</Text>
-
-                <View className="flex-row flex-wrap" style={{ gap: 12 }}>
-                    {ACTION_CARDS.map((card) => (
-                        <TouchableOpacity
-                            key={card.key}
-                            onPress={() => navigation.navigate(card.key)}
-                            className={`rounded-3xl border p-5 ${card.bg} ${card.border}`}
-                            style={{ width: '47.5%' }}
-                            activeOpacity={0.75}
+                {/* Horizontal Quick Actions Pill Menu */}
+                <View className="px-6 mt-2 mb-8">
+                    <View className="flex-row justify-between" style={{ gap: 12 }}>
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('SearchTab')}
+                            className="flex-1 rounded-2xl p-4 items-center justify-center flex-row"
+                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
                         >
-                            <View className={`w-12 h-12 rounded-2xl items-center justify-center mb-3 ${card.iconBg}`}>
-                                <Text className="text-2xl">{card.icon}</Text>
-                            </View>
-                            <Text className={`font-black text-base ${card.text}`}>{card.title}</Text>
-                            <Text className="text-xs mt-0.5 font-medium" style={{ color: colors.textMuted }}>{card.subtitle}</Text>
+                            <Ionicons name="search" size={20} color={colors.text} style={{ marginRight: 8 }} />
+                            <Text className="font-semibold" style={{ color: colors.text }}>
+                                {lang === 'en' ? 'Search' : 'Caută'}
+                            </Text>
                         </TouchableOpacity>
-                    ))}
+
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('HistoryTab')}
+                            className="flex-1 rounded-2xl p-4 items-center justify-center flex-row"
+                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                        >
+                            <Ionicons name="time" size={20} color={colors.text} style={{ marginRight: 8 }} />
+                            <Text className="font-semibold" style={{ color: colors.text }}>
+                                {lang === 'en' ? 'History' : 'Istoric'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
 
-            {/* Despre aplicatie */}
-            <View className="px-6 mt-10">
-                <Text className="font-black text-lg mb-1" style={{ color: colors.text }}>{t('homeInfoTitle')}</Text>
-                <Text className="text-xs font-medium mb-5" style={{ color: colors.textSub }}>
-                    {t('homeInfoSub')}
-                </Text>
-
-                <View style={{ gap: 10 }}>
-                    {INFO_ITEMS.map((item, i) => (
-                        <View key={i} className={`rounded-3xl border p-5 flex-row items-start ${item.bg} ${item.border}`}>
-                            <View className="w-11 h-11 bg-white rounded-2xl items-center justify-center mr-4 shadow-sm">
-                                <Text className="text-xl">{item.icon}</Text>
+                {/* Horizontal Carousel */}
+                <View className="mt-2">
+                    <Text className="px-6 text-sm font-bold uppercase tracking-widest mb-4" style={{ color: colors.textSub }}>
+                        {lang === 'en' ? 'Discover' : 'Descoperă'}
+                    </Text>
+                    
+                    <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false} 
+                        contentContainerStyle={{ paddingHorizontal: 24, gap: 16 }}
+                    >
+                        {/* Carousel Card 1 */}
+                        <View 
+                            className="rounded-3xl p-5 w-64 shadow-sm"
+                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                        >
+                            <View className="w-12 h-12 rounded-full items-center justify-center mb-4" style={{ backgroundColor: colors.bg }}>
+                                <Ionicons name="leaf" size={24} color={colors.primary} />
                             </View>
-                            <View className="flex-1">
-                                <Text className="font-bold text-sm" style={{ color: colors.text }}>{item.title}</Text>
-                                <Text className="text-xs mt-1 leading-relaxed" style={{ color: colors.textSub }}>{item.desc}</Text>
-                            </View>
+                            <Text className="text-lg font-bold mb-2" style={{ color: colors.text }}>
+                                {lang === 'en' ? 'Clean Ingredients' : 'Ingrediente Sigure'}
+                            </Text>
+                            <Text className="text-sm leading-relaxed" style={{ color: colors.textSub }}>
+                                {lang === 'en'
+                                    ? 'We verify every INCI component against EU safety standards.'
+                                    : 'Verificăm fiecare componentă INCI conform standardelor de siguranță ale UE.'}
+                            </Text>
                         </View>
-                    ))}
+
+                        {/* Carousel Card 2 */}
+                        <View 
+                            className="rounded-3xl p-5 w-64 shadow-sm"
+                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                        >
+                            <View className="w-12 h-12 rounded-full items-center justify-center mb-4" style={{ backgroundColor: colors.bg }}>
+                                <Ionicons name="sparkles" size={24} color={colors.primary} />
+                            </View>
+                            <Text className="text-lg font-bold mb-2" style={{ color: colors.text }}>
+                                {lang === 'en' ? 'AI Analysis' : 'Analiză IA'}
+                            </Text>
+                            <Text className="text-sm leading-relaxed" style={{ color: colors.textSub }}>
+                                {lang === 'en'
+                                    ? 'Smart text recognition reads the label and builds your profile.'
+                                    : 'Recunoașterea inteligentă a textului citește eticheta și îți creează profilul.'}
+                            </Text>
+                        </View>
+                        
+                        {/* Carousel Card 3 */}
+                        <View 
+                            className="rounded-3xl p-5 w-64 shadow-sm"
+                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                        >
+                            <View className="w-12 h-12 rounded-full items-center justify-center mb-4" style={{ backgroundColor: colors.bg }}>
+                                <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+                            </View>
+                            <Text className="text-lg font-bold mb-2" style={{ color: colors.text }}>
+                                {lang === 'en' ? 'Allergy Alerts' : 'Alerte Alergii'}
+                            </Text>
+                            <Text className="text-sm leading-relaxed" style={{ color: colors.textSub }}>
+                                {lang === 'en'
+                                    ? 'Get instant warnings about ingredients you are sensitive to.'
+                                    : 'Primești avertismente instantanee despre ingredientele la care ești sensibil.'}
+                            </Text>
+                        </View>
+
+                    </ScrollView>
                 </View>
-            </View>
 
-            {/* Footer info */}
-            <View className="mx-6 mt-10 rounded-3xl p-5 items-center" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
-                <Text className="text-xs text-center leading-relaxed" style={{ color: colors.textMuted }}>
-                    {t('homeFooter')}
-                </Text>
-            </View>
-
-        </ScrollView>
+            </ScrollView>
+        </SafeAreaView>
     );
 }

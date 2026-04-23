@@ -44,11 +44,11 @@ export default function ManualAddScreen({ navigation, route }) {
             t('scannerPickSourceMsg'),
             [
                 {
-                    text: `📷 ${t('scannerCamera')}`,
+                    text: t('scannerCamera'),
                     onPress: () => launchSource('camera'),
                 },
                 {
-                    text: `🖼️ ${t('scannerGallery')}`,
+                    text: t('scannerGallery'),
                     onPress: () => launchSource('gallery'),
                 },
                 { text: t('scannerCancel'), style: 'cancel' },
@@ -172,16 +172,16 @@ export default function ManualAddScreen({ navigation, route }) {
 
         return (
             <Layout className="justify-center items-center">
-                <ActivityIndicator size="large" color="#FDA4AF" />
+                <ActivityIndicator size="large" color={colors.primary} />
                 <Text className="mt-4 font-medium text-center px-6" style={{ color: colors.textSub }}>
-                    {loadingMessages[loadingStep]} 🤖📖
+                    {loadingMessages[loadingStep]}
                 </Text>
             </Layout>
         );
     }
 
     return (
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={0} style={{ flex: 1 }}>
             <ScrollView className="flex-1" style={{ backgroundColor: colors.bg }} contentContainerStyle={{ padding: 24, paddingBottom: 60, paddingTop: 40 }}>
 
                 <Text className="text-3xl font-bold mb-2" style={{ color: colors.text }}>{t('manualTitle')}</Text>
@@ -231,7 +231,7 @@ export default function ManualAddScreen({ navigation, route }) {
                 </View>
 
                 <View className="gap-y-4">
-                    <Button title={`✨ ${t('manualSubmitBtn')}`} onPress={handleSubmit} disabled={!name.trim() || !base64Image} />
+                    <Button title={t('manualSubmitBtn')} onPress={handleSubmit} disabled={!name.trim() || !base64Image} />
                     <Button title={t('manualCancelBtn')} variant="ghost" onPress={() => navigation.goBack()} />
                 </View>
 
