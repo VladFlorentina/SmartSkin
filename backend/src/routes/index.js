@@ -3,7 +3,9 @@ import rateLimit from 'express-rate-limit';
 import { supabase } from '../config/supabase.js';
 import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct, searchProducts, reportProductIssue } from '../controllers/productController.js';
 import { sendMessage, getChatHistory } from '../controllers/aiController.js';
+import { getStats, getReports, deleteReport } from '../controllers/adminController.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
+import { adminMiddleware } from '../middleware/admin.js';
 
 const router = express.Router();
 
@@ -258,5 +260,10 @@ router.get('/health', (req, res) => {
         version: '1.0.0'
     });
 });
+
+// ========== Admin Routes ==========
+router.get('/admin/stats', authMiddleware, adminMiddleware, getStats);
+router.get('/admin/reports', authMiddleware, adminMiddleware, getReports);
+router.delete('/admin/reports/:id', authMiddleware, adminMiddleware, deleteReport);
 
 export default router;

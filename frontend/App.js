@@ -23,6 +23,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import CompareScreen from './src/screens/CompareScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
+import AdminPanelScreen from './src/screens/AdminPanelScreen';
 
 NativeWindStyleSheet.setOutput({
   default: "native",
@@ -45,7 +46,7 @@ function AuthNavigator() {
   );
 }
 
-// Stack pentru utilizatori autentificati
+// Stack pentru utilizatori autentificati normali
 function AppNavigator() {
   return (
     <AppStack.Navigator screenOptions={{ headerShown: false }}>
@@ -56,6 +57,16 @@ function AppNavigator() {
       <AppStack.Screen name="Compare" component={CompareScreen} />
       <AppStack.Screen name="Chat" component={ChatScreen} />
     </AppStack.Navigator>
+  );
+}
+
+// Stack pentru Administratori (separat complet)
+const AdminStack = createNativeStackNavigator();
+function AdminNavigator() {
+  return (
+    <AdminStack.Navigator screenOptions={{ headerShown: false }}>
+      <AdminStack.Screen name="AdminPanel" component={AdminPanelScreen} />
+    </AdminStack.Navigator>
   );
 }
 
@@ -70,10 +81,63 @@ function GuestNavigator() {
 
 function RootNavigator({ session }) {
   const { isGuest } = useApp();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingRole, setCheckingRole] = useState(true);
+
+  useEffect(() => {
+    if (session && session.user) {
+      checkAdminRole(session.user.id);
+    } else {
+      setIsAdmin(false);
+      setCheckingRole(false);
+    }
+  }, [session]);
+
+  const checkAdminRole = async (userId) => {
+    try {
+      console.log('[DEBUG] Checking role for user:', userId);
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('[DEBUG] Supabase error fetching role:', error);
+      }
+      
+      console.log('[DEBUG] Fetched role data:', data);
+      
+      if (data?.role === 'admin') {
+        console.log('[DEBUG] User IS admin! Setting isAdmin to true.');
+        setIsAdmin(true);
+      } else {
+        console.log('[DEBUG] User is NOT admin. Setting isAdmin to false.');
+        setIsAdmin(false);
+      }
+    } catch (e) {
+      console.error('[DEBUG] Exception in checkAdminRole:', e);
+      setIsAdmin(false);
+    } finally {
+      setCheckingRole(false);
+    }
+  };
+
   const isAuthenticated = Boolean(session && session.user);
+
+  if (checkingRole && isAuthenticated) {
+    return (
+      <View className="flex-1 justify-center items-center" style={{ backgroundColor: '#1A202C' }}>
+        <ActivityIndicator size="large" color="#F56565" />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
-      {isAuthenticated ? <AppNavigator /> : isGuest ? <GuestNavigator /> : <AuthNavigator />}
+      {isAuthenticated 
+        ? (isAdmin ? <AdminNavigator /> : <AppNavigator />) 
+        : isGuest ? <GuestNavigator /> : <AuthNavigator />}
     </NavigationContainer>
   );
 }

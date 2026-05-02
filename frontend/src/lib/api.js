@@ -241,3 +241,63 @@ export async function reportProductIssue(productId, issueCategory, userComment) 
         throw error;
     }
 }
+
+export async function fetchAdminReports() {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/reports`, {
+            method: 'GET',
+            headers
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch admin reports');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error fetching admin reports:', error);
+        throw error;
+    }
+}
+
+export async function fetchAdminStats() {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/stats`, {
+            method: 'GET',
+            headers
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch admin stats');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error fetching admin stats:', error);
+        throw error;
+    }
+}
+
+export async function deleteAdminReport(reportId) {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/reports/${reportId}`, {
+            method: 'DELETE',
+            headers
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete report');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error deleting admin report:', error);
+        throw error;
+    }
+}
