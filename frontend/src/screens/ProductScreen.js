@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { fetchProductDetails, saveToUserHistory } from '../lib/api';
+import { View, Text, Image, ScrollView, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import { fetchProductDetails, saveToUserHistory, reportProductIssue } from '../lib/api';
 import { supabase } from '../lib/supabase';
 import Button from '../components/Button';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,12 @@ export default function ProductScreen({ navigation, route }) {
     const [isOffline, setIsOffline] = useState(false);
     const [ocrMetadata, setOcrMetadata] = useState(null); // Metadata de la OBF pentru pre-fill
     const [userProfile, setUserProfile] = useState({ skinType: null, allergies: [] });
+
+    // State for Report Modal
+    const [reportModalVisible, setReportModalVisible] = useState(false);
+    const [issueCategory, setIssueCategory] = useState('');
+    const [userComment, setUserComment] = useState('');
+    const [reporting, setReporting] = useState(false);
 
     useEffect(() => {
         // Daca avem deja date complete din cache, nu mai facem fetch
@@ -403,8 +409,92 @@ export default function ProductScreen({ navigation, route }) {
                             </Text>
                         </View>
                     )}
+
+                    {/* Report Button (Bottom of screen) */}
+                    {!isGuest && (
+                        <TouchableOpacity 
+                            onPress={() => setReportModalVisible(true)}
+                            className="mt-6 mb-4 flex-row justify-center items-center py-3 rounded-2xl"
+                            style={{ backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border }}
+                        >
+                            <Ionicons name="warning-outline" size={18} color={colors.textSub} />
+                            <Text className="ml-2 font-medium" style={{ color: colors.textSub }}>Raportează o problemă cu acest produs</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </ScrollView>
+
+            {/* Report Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={reportModalVisible}
+                onRequestClose={() => setReportModalVisible(false)}
+            >
+                <View className="flex-1 justify-center items-center px-6" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                    <View className="w-full p-6 rounded-3xl" style={{ backgroundColor: colors.card }}>
+                        <Text className="text-xl font-bold mb-4" style={{ color: colors.text }}>Raportează o problemă</Text>
+                        
+                        <Text className="text-sm font-medium mb-2" style={{ color: colors.textSub }}>Categorie</Text>
+                        <TextInput 
+                            className="border rounded-xl p-3 mb-4"
+                            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.bg }}
+                            placeholder="ex: Ingrediente Greșite, Scor Fals"
+                            placeholderTextColor={colors.textMuted}
+                            value={issueCategory}
+                            onChangeText={setIssueCategory}
+                        />
+
+                        <Text className="text-sm font-medium mb-2" style={{ color: colors.textSub }}>Detalii</Text>
+                        <TextInput 
+                            className="border rounded-xl p-3 mb-6"
+                            style={{ borderColor: colors.border, color: colors.text, backgroundColor: colors.bg, minHeight: 80 }}
+                            placeholder="Descrie problema observată..."
+                            placeholderTextColor={colors.textMuted}
+                            multiline
+                            textAlignVertical="top"
+                            value={userComment}
+                            onChangeText={setUserComment}
+                        />
+
+                        <View className="flex-row justify-end gap-x-3">
+                            <TouchableOpacity 
+                                onPress={() => setReportModalVisible(false)}
+                                className="px-4 py-2 rounded-xl border"
+                                style={{ borderColor: colors.border }}
+                                disabled={reporting}
+                            >
+                                <Text style={{ color: colors.textSub }}>Anulează</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={async () => {
+                                    if(!issueCategory.trim()) {
+                                        Alert.alert('Eroare', 'Te rugăm să specifici categoria problemei.');
+                                        return;
+                                    }
+                                    try {
+                                        setReporting(true);
+                                        await reportProductIssue(product.id, issueCategory, userComment);
+                                        setReportModalVisible(false);
+                                        setIssueCategory('');
+                                        setUserComment('');
+                                        Alert.alert('Succes', 'Raportul a fost trimis! Mulțumim pentru contribuție.');
+                                    } catch(e) {
+                                        Alert.alert('Eroare', 'Nu am putut trimite raportul.');
+                                    } finally {
+                                        setReporting(false);
+                                    }
+                                }}
+                                className="px-4 py-2 rounded-xl justify-center items-center min-w-[80px]"
+                                style={{ backgroundColor: colors.primary }}
+                                disabled={reporting}
+                            >
+                                {reporting ? <ActivityIndicator color="#fff" size="small" /> : <Text className="font-bold text-white">Trimite</Text>}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }

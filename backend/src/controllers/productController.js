@@ -447,3 +447,43 @@ export async function addManualProduct(req, res) {
         });
     }
 }
+
+/**
+ * POST /api/products/report
+ * Raporteaza o problema cu un produs (feedback)
+ */
+export async function reportProductIssue(req, res) {
+    try {
+        const userId = req.user?.id;
+        const { productId, issueCategory, userComment } = req.body;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (!productId || !issueCategory) {
+            return res.status(400).json({ error: 'Product ID and Issue Category are required' });
+        }
+
+        const { data, error } = await supabase
+            .from('product_reports')
+            .insert({
+                user_id: userId,
+                product_id: productId,
+                issue_category: issueCategory,
+                user_comment: userComment || null,
+                created_at: new Date().toISOString()
+            });
+
+        if (error) {
+            console.error('Error saving product report:', error);
+            return res.status(500).json({ error: 'Failed to submit report' });
+        }
+
+        return res.status(201).json({ message: 'Report submitted successfully' });
+
+    } catch (error) {
+        console.error('Error in reportProductIssue:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+}

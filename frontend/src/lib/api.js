@@ -220,3 +220,24 @@ export async function saveToUserHistory(productId, barcode, safetyScore) {
         console.error('API Error saving history:', error);
     }
 }
+
+export async function reportProductIssue(productId, issueCategory, userComment) {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/products/report`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ productId, issueCategory, userComment })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to submit report');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error reporting issue:', error);
+        throw error;
+    }
+}

@@ -1,7 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { supabase } from '../config/supabase.js';
-import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct, searchProducts } from '../controllers/productController.js';
+import { getProductByBarcode, saveToHistory, getUserHistory, addManualProduct, searchProducts, reportProductIssue } from '../controllers/productController.js';
 import { sendMessage, getChatHistory } from '../controllers/aiController.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.js';
 
@@ -99,6 +99,9 @@ router.get('/products/:barcode', optionalAuthMiddleware, getProductByBarcode);
 
 // POST adaugare produs manual + OCR (rate limited, auth obligatoriu pentru a proteja creditele Gemini)
 router.post('/products/manual', ocrLimiter, authMiddleware, addManualProduct);
+
+// POST raportare produs (feedback)
+router.post('/products/report', authMiddleware, reportProductIssue);
 
 // ========== History Routes (require auth) ==========
 
