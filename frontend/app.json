@@ -28,8 +28,8 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "backendUrl": "",
-      "backendIp": "192.168.100.26",
+      "backendUrl": "https://smartskin-api.onrender.com",
+      "backendIp": "",
       "backendPort": "3000",
       "eas": {
         "projectId": "9bcb750c-935f-491e-80fe-51be90ac8e39"
