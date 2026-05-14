@@ -143,6 +143,25 @@ function RootNavigator({ session }) {
   );
 }
 
+const globalToastConfig = {
+  success: (props) => (
+    <BaseToast
+      {...props}
+      style={{ borderLeftColor: '#8A5A44', backgroundColor: '#FFFFFF', borderRadius: 20, height: undefined, minHeight: 70, paddingVertical: 12, paddingHorizontal: 15, marginTop: 10, width: '90%', elevation: 5 }}
+      text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#2D3748', marginBottom: 4 }}
+      text2Style={{ fontSize: 14, color: '#718096', lineHeight: 20 }}
+    />
+  ),
+  error: (props) => (
+    <ErrorToast
+      {...props}
+      style={{ borderLeftColor: '#F56565', backgroundColor: '#FFF5F5', borderRadius: 20, height: undefined, minHeight: 70, paddingVertical: 12, paddingHorizontal: 15, marginTop: 10, width: '90%', elevation: 5 }}
+      text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#C53030', marginBottom: 4 }}
+      text2Style={{ fontSize: 14, color: '#C53030', lineHeight: 20 }}
+    />
+  ),
+};
+
 export default function App() {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -173,33 +192,12 @@ export default function App() {
     );
   }
 
-  // Preiau configurarea ca sa o pot folosi mai jos chiar daca e declarata in RootNavigator
-  // O varianta mai curata e sa o las direct aici in componenta principala:
-  const toastConfig = {
-    success: (props) => (
-      <BaseToast
-        {...props}
-        style={{ borderLeftColor: '#8A5A44', backgroundColor: '#FFFFFF', borderRadius: 20, height: 'auto', minHeight: 70, paddingVertical: 12, paddingHorizontal: 15, marginTop: 10, width: '90%', elevation: 5 }}
-        text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#2D3748', marginBottom: 4 }}
-        text2Style={{ fontSize: 14, color: '#718096', lineHeight: 20 }}
-      />
-    ),
-    error: (props) => (
-      <ErrorToast
-        {...props}
-        style={{ borderLeftColor: '#F56565', backgroundColor: '#FFF5F5', borderRadius: 20, height: 'auto', minHeight: 70, paddingVertical: 12, paddingHorizontal: 15, marginTop: 10, width: '90%', elevation: 5 }}
-        text1Style={{ fontSize: 16, fontWeight: 'bold', color: '#C53030', marginBottom: 4 }}
-        text2Style={{ fontSize: 14, color: '#C53030', lineHeight: 20 }}
-      />
-    ),
-  };
-
   return (
     <SafeAreaProvider>
       <AppProvider>
         <ErrorBoundary>
           <RootNavigator session={session} />
-          <Toast config={toastConfig} />
+          <Toast config={globalToastConfig} />
         </ErrorBoundary>
       </AppProvider>
     </SafeAreaProvider>
