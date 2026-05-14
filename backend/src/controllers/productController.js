@@ -6,6 +6,61 @@ import { searchMakeupByName } from '../services/makeupApiService.js';
 import { randomUUID } from 'crypto';
 
 /**
+ * Salveaza legaturile dintre un produs si ingredientele sale in tabelul de jonctiune product_ingredients.
+ * Apelata dupa fiecare analiza reusita, pentru a mentine relatia normalizata (1NF).
+ *
+ * @param {string} productId - UUID-ul produsului din tabela products
+ * @param {Array}  ingredientsBreakdown - Lista returnata de analyzeToxicity()
+ */
+async function saveProductIngredients(productId, ingredientsBreakdown) {
+    if (!productId || !ingredientsBreakdown || ingredientsBreakdown.length === 0) return;
+
+    // Retinem doar ingredientele gasite efectiv in tabela ingredients (nu cele 'unknown')
+    const foundIngredients = ingredientsBreakdown.filter(i => i.riskCategory !== 'unknown' && i.name);
+    if (foundIngredients.length === 0) return;
+
+    // Citim ID-urile numerice din tabela ingredients dupa inci_name
+    const inciNames = foundIngredients.map(i => i.name);
+    const { data: ingRows, error: ingError } = await supabase
+        .from('ingredients')
+        .select('id, inci_name')
+        .in('inci_name', inciNames);
+
+    if (ingError || !ingRows || ingRows.length === 0) {
+        console.error('[product_ingredients] Eroare la citirea ID-urilor din ingredients:', ingError?.message);
+        return;
+    }
+
+    // Map rapid: INCI_NAME (uppercase) -> id numeric
+    const ingMap = new Map(ingRows.map(r => [r.inci_name.toUpperCase(), r.id]));
+
+    // Construim randurile de inserat (product_id + ingredient_id + pozitia INCI)
+    const toInsert = foundIngredients
+        .map((ing, index) => {
+            const ingId = ingMap.get(ing.name.toUpperCase());
+            if (!ingId) return null;
+            return {
+                product_id:    productId,
+                ingredient_id: ingId,
+                position:      index  // pozitia 0 = concentratie maxima in formula
+            };
+        })
+        .filter(Boolean);
+
+    if (toInsert.length === 0) return;
+
+    const { error: upsertError } = await supabase
+        .from('product_ingredients')
+        .upsert(toInsert, { onConflict: 'product_id,ingredient_id', ignoreDuplicates: true });
+
+    if (upsertError) {
+        console.error('[product_ingredients] Eroare la salvarea legaturilor:', upsertError.message);
+    } else {
+        console.log(`[product_ingredients] ${toInsert.length} ingrediente legate de produsul ${productId}`);
+    }
+}
+
+/**
  * GET /api/products/search?q=text
  * Cauta produse dupa nume in:
  * 1. Cache Supabase (produse deja analizate de comunitate)
@@ -108,15 +163,32 @@ export async function searchProducts(req, res) {
 }
 
 /**
- * Extrage preferintele utilizatorului din user_metadata Supabase.
+ * Extrage preferintele utilizatorului:
+ *   - skin_type: din user_metadata (Supabase Auth)
+ *   - allergies: din tabelul user_allergies (normalizat, 1NF)
  * Returneaza null daca userul nu e autentificat sau nu are preferinte setate.
  */
-function getUserPreferences(req) {
+async function getUserPreferences(req) {
+    const userId = req.user?.id;
     const metadata = req.user?.user_metadata;
-    if (!metadata) return null;
-    const { skin_type, allergies } = metadata;
-    if (!skin_type && (!allergies || allergies.length === 0)) return null;
-    return { skin_type: skin_type || null, allergies: allergies || [] };
+    if (!userId) return null;
+
+    const skin_type = metadata?.skin_type || null;
+
+    // Citeste alergiile din tabelul normalizat user_allergies
+    const { data: allergyRows, error: allergyError } = await supabase
+        .from('user_allergies')
+        .select('allergy_label')
+        .eq('user_id', userId);
+
+    if (allergyError) {
+        console.error('[getUserPreferences] Eroare la citirea alergiilor:', allergyError.message);
+    }
+
+    const allergies = allergyRows?.map(r => r.allergy_label) || [];
+
+    if (!skin_type && allergies.length === 0) return null;
+    return { skin_type, allergies };
 }
 
 /**
@@ -149,7 +221,7 @@ export async function getProductByBarcode(req, res) {
                 console.log(`[CACHE] Product found in cache: ${barcode}`);
 
                 // Analizeaza toxicitatea cu preferintele utilizatorului (daca e logat)
-                const userPrefs = getUserPreferences(req);
+                const userPrefs = await getUserPreferences(req);
                 const analysis = await analyzeToxicity(cachedProduct.ingredients_list, userPrefs, lang, {
                     name: cachedProduct.name,
                     brand: cachedProduct.brand,
@@ -172,7 +244,7 @@ export async function getProductByBarcode(req, res) {
         
         if (obfData?.ingredientsText) {
             console.log(`[OBF] Ingrediente gasite pentru ${barcode} - analizam...`);
-            const userPrefs = getUserPreferences(req);
+            const userPrefs = await getUserPreferences(req);
             const analysis = await analyzeToxicity(obfData.ingredientsText, userPrefs, lang, {
                 name: obfData.name,
                 brand: obfData.brand,
@@ -197,6 +269,11 @@ export async function getProductByBarcode(req, res) {
 
             if (saveError) {
                 console.error('Error saving OBF product to cache:', saveError);
+            }
+
+            // Salveaza legaturile in tabelul de jonctiune product_ingredients
+            if (savedProduct?.id) {
+                await saveProductIngredients(savedProduct.id, analysis.ingredientsBreakdown);
             }
 
             return res.json({
@@ -398,7 +475,7 @@ export async function addManualProduct(req, res) {
         console.log(`[OCR SUCCESS] Ingrediente extrase: ${ingredientsText.substring(0, 100)}...`);
 
         
-        const userPrefs = getUserPreferences(req);
+        const userPrefs = await getUserPreferences(req);
         const analysis = await analyzeToxicity(ingredientsText, userPrefs, lang, {
             name,
             brand,
@@ -423,6 +500,11 @@ export async function addManualProduct(req, res) {
         if (saveError) {
             console.error('[DB ERROR] Nu am putut salva produsul manual:', saveError);
             return res.status(500).json({ error: 'Failed to save product to database' });
+        }
+
+        // Salveaza legaturile in tabelul de jonctiune product_ingredients
+        if (savedProduct?.id) {
+            await saveProductIngredients(savedProduct.id, analysis.ingredientsBreakdown);
         }
 
         // 4. Returneaza rezultatul

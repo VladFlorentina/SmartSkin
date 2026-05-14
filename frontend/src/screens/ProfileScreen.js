@@ -51,10 +51,21 @@ export default function ProfileScreen({ navigation }) {
             setUserEmail(user.email || '');
             setUserName(user.user_metadata?.full_name || '');
 
-            // Ia preferintele din user_metadata (salvate in Supabase Auth)
+            // Tip ten din user_metadata (Supabase Auth)
             const metadata = user.user_metadata || {};
             setSkinType(metadata.skin_type || null);
-            setAllergies(metadata.allergies || []);
+
+            // Alergii din tabelul normalizat user_allergies
+            const { data: allergyRows, error: allergyError } = await supabase
+                .from('user_allergies')
+                .select('allergy_label')
+                .eq('user_id', user.id);
+
+            if (allergyError) {
+                console.error('Eroare la incarcarea alergiilor:', allergyError.message);
+            }
+
+            setAllergies(allergyRows?.map(r => r.allergy_label) || []);
 
         } catch (error) {
             console.error('Eroare la incarcarea profilului:', error);
@@ -67,15 +78,37 @@ export default function ProfileScreen({ navigation }) {
         try {
             setSaving(true);
 
-            // Salveaza in user_metadata (Supabase Auth)
-            const { error } = await supabase.auth.updateUser({
-                data: {
-                    skin_type: skinType,
-                    allergies: allergies,
-                }
-            });
+            // Ia ID-ul utilizatorului curent
+            const { data: authData } = await supabase.auth.getUser();
+            const userId = authData?.user?.id;
+            if (!userId) throw new Error('Utilizatorul nu este autentificat');
 
-            if (error) throw error;
+            // 1. Salveaza skin_type in user_metadata (Supabase Auth)
+            const { error: metaError } = await supabase.auth.updateUser({
+                data: { skin_type: skinType }
+            });
+            if (metaError) throw metaError;
+
+            // 2. Salveaza alergiile in tabelul normalizat user_allergies
+            //    Strategie: sterge toate alergiile existente si reinserteaza cele selectate
+            const { error: deleteError } = await supabase
+                .from('user_allergies')
+                .delete()
+                .eq('user_id', userId);
+
+            if (deleteError) throw deleteError;
+
+            if (allergies.length > 0) {
+                const { error: insertError } = await supabase
+                    .from('user_allergies')
+                    .insert(
+                        allergies.map(label => ({
+                            user_id: userId,
+                            allergy_label: label
+                        }))
+                    );
+                if (insertError) throw insertError;
+            }
 
             Alert.alert(t('profileSaved'), t('profileSavedMsg'));
         } catch (error) {
