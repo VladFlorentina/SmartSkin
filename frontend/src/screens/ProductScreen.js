@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AnimatedScoreRing from '../components/AnimatedScoreRing';
 import IngredientInsightCharts from '../components/IngredientInsightCharts';
 import { useApp } from '../lib/AppContext';
+import Toast from 'react-native-toast-message';
 
 export default function ProductScreen({ navigation, route }) {
     const { barcode, cachedProduct } = route.params;
@@ -238,9 +239,9 @@ export default function ProductScreen({ navigation, route }) {
                     </TouchableOpacity>
 
                     <View className="items-center mt-6">
-                        {product.imageUrl ? (
+                        {product.imageUrl || product.image_url ? (
                             <Image
-                                source={{ uri: product.imageUrl }}
+                                source={{ uri: product.imageUrl || product.image_url }}
                                 className="w-40 h-40 rounded-3xl"
                                 resizeMode="contain"
                             />
@@ -469,7 +470,7 @@ export default function ProductScreen({ navigation, route }) {
                             <TouchableOpacity 
                                 onPress={async () => {
                                     if(!issueCategory.trim()) {
-                                        Alert.alert('Eroare', 'Te rugăm să specifici categoria problemei.');
+                                        Toast.show({ type: 'error', text1: 'Eroare', text2: 'Te rugăm să specifici categoria problemei.' });
                                         return;
                                     }
                                     try {
@@ -478,9 +479,9 @@ export default function ProductScreen({ navigation, route }) {
                                         setReportModalVisible(false);
                                         setIssueCategory('');
                                         setUserComment('');
-                                        Alert.alert('Succes', 'Raportul a fost trimis! Mulțumim pentru contribuție.');
+                                        Toast.show({ type: 'success', text1: 'Succes', text2: 'Raportul a fost trimis! Mulțumim.' });
                                     } catch(e) {
-                                        Alert.alert('Eroare', 'Nu am putut trimite raportul.');
+                                        Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu am putut trimite raportul.' });
                                     } finally {
                                         setReporting(false);
                                     }

@@ -102,7 +102,7 @@ export default function HistoryScreen({ navigation }) {
                 barcode,
                 cachedProduct: {
                     ...productData,
-                    imageUrl: productData.image_url,
+                    imageUrl: productData.imageUrl || productData.image_url,
                     analysis: item.products?.analysis || { safetyScore: item.safety_score },
                 }
             });

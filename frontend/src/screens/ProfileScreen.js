@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Switch } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import Button from '../components/Button';
 import { useApp } from '../lib/AppContext';
 
@@ -110,10 +111,18 @@ export default function ProfileScreen({ navigation }) {
                 if (insertError) throw insertError;
             }
 
-            Alert.alert(t('profileSaved'), t('profileSavedMsg'));
+            Toast.show({
+                type: 'success',
+                text1: t('profileSaved'),
+                text2: t('profileSavedMsg'),
+            });
         } catch (error) {
             console.error('Eroare la salvarea profilului:', error);
-            Alert.alert(t('profileErr'), t('profileSaveErr'));
+            Toast.show({
+                type: 'error',
+                text1: t('profileErr'),
+                text2: t('profileSaveErr'),
+            });
         } finally {
             setSaving(false);
         }

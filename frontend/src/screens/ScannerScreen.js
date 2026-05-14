@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking, ActivityIndicator } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../components/Button';
 import { useApp } from '../lib/AppContext';
@@ -9,6 +9,7 @@ import { useApp } from '../lib/AppContext';
 export default function ScannerScreen({ navigation }) {
     const [permission, requestPermission] = useCameraPermissions();
     const [scanned, setScanned] = useState(false);
+    const isFocused = useIsFocused();
     const { t, colors, lang, isGuest, setIsGuest } = useApp();
 
     // Reseteaza scanner-ul cand user-ul revine pe acest ecran
@@ -68,14 +69,16 @@ export default function ScannerScreen({ navigation }) {
 
     return (
         <View className="flex-1 bg-black">
-            <CameraView
-                style={StyleSheet.absoluteFillObject}
-                facing="back"
-                onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-                barcodeScannerSettings={{
-                    barcodeTypes: ["ean13", "ean8", "qr", "upc_a", "upc_e"],
-                }}
-            />
+            {isFocused && (
+                <CameraView
+                    style={StyleSheet.absoluteFillObject}
+                    facing="back"
+                    onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+                    barcodeScannerSettings={{
+                        barcodeTypes: ["ean13", "ean8", "qr", "upc_a", "upc_e"],
+                    }}
+                />
+            )}
             {/* Overlay - separat de CameraView pentru a evita warning-ul */}
             {!isGuest ? (
                 <View style={StyleSheet.absoluteFillObject} className="flex-row justify-between p-12 z-10" pointerEvents="box-none">

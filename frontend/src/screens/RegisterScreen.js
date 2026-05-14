@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
+import Toast from 'react-native-toast-message';
 import Layout from '../components/Layout';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -14,9 +15,9 @@ export default function RegisterScreen({ navigation }) {
     const { t, colors } = useApp();
 
     async function handleRegister() {
-        if (!fullName.trim()) { Alert.alert(t('registerErr'), t('registerErrNoName')); return; }
-        if (!email.trim() || !email.includes('@')) { Alert.alert(t('registerErr'), t('registerErrInvalidEmail')); return; }
-        if (password.length < 6) { Alert.alert(t('registerErr'), t('registerErrPasswordShort')); return; }
+        if (!fullName.trim()) { Toast.show({ type: 'error', text1: t('registerErr'), text2: t('registerErrNoName') }); return; }
+        if (!email.trim() || !email.includes('@')) { Toast.show({ type: 'error', text1: t('registerErr'), text2: t('registerErrInvalidEmail') }); return; }
+        if (password.length < 6) { Toast.show({ type: 'error', text1: t('registerErr'), text2: t('registerErrPasswordShort') }); return; }
         setLoading(true);
         try {
             const { error } = await supabase.auth.signUp({
@@ -24,10 +25,10 @@ export default function RegisterScreen({ navigation }) {
                 password,
                 options: { data: { full_name: fullName.trim() } },
             });
-            if (error) { Alert.alert(t('registerErr'), error.message); }
-            else { Alert.alert(t('registerSuccessTitle'), t('registerSuccessMsg')); }
+            if (error) { Toast.show({ type: 'error', text1: t('registerErr'), text2: error.message }); }
+            else { Toast.show({ type: 'success', text1: t('registerSuccessTitle'), text2: t('registerSuccessMsg') }); }
         } catch (err) {
-            Alert.alert(t('registerErr'), t('registerErrNetwork'));
+            Toast.show({ type: 'error', text1: t('registerErr'), text2: t('registerErrNetwork') });
         } finally {
             setLoading(false);
         }

@@ -3,6 +3,7 @@ import { View, Text, Alert, TouchableOpacity } from 'react-native';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { supabase } from '../lib/supabase';
+import Toast from 'react-native-toast-message';
 import Layout from '../components/Layout';
 import Input from '../components/Input';
 import Button from '../components/Button';
@@ -92,7 +93,7 @@ export default function LoginScreen({ navigation }) {
             setIsGuest(false);
         } catch (err) {
             console.log('[AUTH][GOOGLE] final error =', err);
-            Alert.alert(t('loginErr'), err?.message || t('loginGoogleErr'));
+            Toast.show({ type: 'error', text1: t('loginErr'), text2: err?.message || t('loginGoogleErr') });
         } finally {
             setGoogleLoading(false);
         }
@@ -103,25 +104,25 @@ export default function LoginScreen({ navigation }) {
 
         // Validari locale - evita request-uri inutile la Supabase
         if (!cleanEmail) {
-            Alert.alert(t('loginErr'), t('loginErrNoEmail'));
+            Toast.show({ type: 'error', text1: t('loginErr'), text2: t('loginErrNoEmail') });
             return;
         }
         if (!cleanEmail.includes('@')) {
-            Alert.alert(t('loginErr'), t('loginErrInvalidEmail'));
+            Toast.show({ type: 'error', text1: t('loginErr'), text2: t('loginErrInvalidEmail') });
             return;
         }
         if (!password) {
-            Alert.alert(t('loginErr'), t('loginErrNoPassword'));
+            Toast.show({ type: 'error', text1: t('loginErr'), text2: t('loginErrNoPassword') });
             return;
         }
 
         setLoading(true);
         try {
             const { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-            if (error) { Alert.alert(t('loginErr'), error.message); }
+            if (error) { Toast.show({ type: 'error', text1: t('loginErr'), text2: error.message }); }
             else { setIsGuest(false); }
         } catch (err) {
-            Alert.alert(t('loginErr'), t('loginErrNetwork'));
+            Toast.show({ type: 'error', text1: t('loginErr'), text2: t('loginErrNetwork') });
         } finally {
             setLoading(false);
         }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
 import { fetchAdminReports, deleteAdminReport, fetchAdminStats } from '../lib/api';
 import { useApp } from '../lib/AppContext';
 import { supabase } from '../lib/supabase';
@@ -25,7 +26,7 @@ export default function AdminPanelScreen({ navigation }) {
             setReports(reportsData);
             setStats(statsData);
         } catch (error) {
-            Alert.alert('Eroare', 'Nu am putut încărca rapoartele. Ești sigur că ai rol de admin?');
+            Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu am putut încărca rapoartele. Ești sigur că ai rol de admin?' });
             console.error(error);
         } finally {
             setLoading(false);
@@ -42,9 +43,9 @@ export default function AdminPanelScreen({ navigation }) {
                     try {
                         await deleteAdminReport(reportId);
                         setReports(prev => prev.filter(r => r.id !== reportId));
-                        Alert.alert('Succes', 'Raport șters.');
+                        Toast.show({ type: 'success', text1: 'Succes', text2: 'Raport șters.' });
                     } catch (error) {
-                        Alert.alert('Eroare', 'Nu am putut șterge raportul.');
+                        Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu am putut șterge raportul.' });
                     }
                 }}
             ]

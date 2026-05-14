@@ -16,6 +16,8 @@ function ScoreBadge({ score, colors }) {
     );
 }
 
+import Toast from 'react-native-toast-message';
+
 export default function SearchScreen({ navigation }) {
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
@@ -85,11 +87,11 @@ export default function SearchScreen({ navigation }) {
     const handleItemPress = (item) => {
         if (!item.barcode) {
             // Produsul nu are barcode (ex: din Makeup API) - nu pot naviga la analiza
-            Alert.alert(
-                t('searchNoBarcodeTitle'),
-                t('searchNoBarcodeMsg'),
-                [{ text: 'OK' }]
-            );
+            Toast.show({
+                type: 'error',
+                text1: t('searchNoBarcodeTitle'),
+                text2: t('searchNoBarcodeMsg')
+            });
             return;
         }
         navigation.navigate('Product', { barcode: item.barcode });
