@@ -179,7 +179,7 @@ export async function searchProducts(query) {
 
 export async function fetchUserHistory() {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // Mărit la 60s pentru "Cold Start-ul" Render.com
 
     try {
         const headers = await getAuthHeaders();
