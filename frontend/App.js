@@ -88,12 +88,13 @@ function GuestNavigator() {
 }
 
 function RootNavigator({ session }) {
-  const { isGuest } = useApp();
+  const { isGuest, colors } = useApp();
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
 
   useEffect(() => {
     if (session && session.user) {
+      setCheckingRole(true);
       checkAdminRole(session.user.id);
     } else {
       setIsAdmin(false);
@@ -135,8 +136,8 @@ function RootNavigator({ session }) {
 
   if (checkingRole && isAuthenticated) {
     return (
-      <View className="flex-1 justify-center items-center" style={{ backgroundColor: '#1A202C' }}>
-        <ActivityIndicator size="large" color="#F56565" />
+      <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.bg }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }

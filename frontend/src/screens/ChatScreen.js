@@ -47,7 +47,7 @@ export default function ChatScreen({ navigation, route }) {
             id: String(++msgIdRef.current),
             text: lang === 'en'
                 ? `Hi! I am CosmetiBot\n\nI am now analyzing **${product?.name || 'this product'}**.\nIt has a safety score of **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nFeel free to ask me anything about the ingredients or their impact on your skin!`
-                : `Salut! Sunt CosmetiBot\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nPui-mi orice intrebare despre ingrediente sau impactul lor asupra tenului tau!`,
+                : `Salut! Sunt CosmetiBot\n\nAnalizez acum **${product?.name || 'acest produs'}**.\nAre un scor de siguranta de **${product?.analysis?.safetyScore || 'N/A'}/100**.\n\nPune-mi orice intrebare despre ingrediente sau impactul lor asupra tenului tau!`,
             sender: 'ai'
         }]);
     };
@@ -240,7 +240,7 @@ export default function ChatScreen({ navigation, route }) {
                     {isLoading ? (
                         <ActivityIndicator color="white" size="small" />
                     ) : (
-                        <Text className="text-white font-bold text-xl"></Text>
+                        <Ionicons name="arrow-up" size={24} color="white" />
                     )}
                 </TouchableOpacity>
             </View>

@@ -280,13 +280,14 @@ function PieChart({ data, colors, lang }) {
                 {total > 0 ? (
                     validSegments.map((segment) => {
                         const angle = (segment.value / total) * 360;
+                        const displayAngle = angle === 360 ? 359.99 : angle;
                         const path = describeDonutSlice(
                             size / 2,
                             size / 2,
                             outerRadius,
                             innerRadius,
                             currentAngle,
-                            currentAngle + angle
+                            currentAngle + displayAngle
                         );
 
                         const element = (

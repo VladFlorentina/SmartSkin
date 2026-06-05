@@ -412,7 +412,7 @@ export default function ProductScreen({ navigation, route }) {
                     )}
 
                     {/* Report Button (Bottom of screen) */}
-                    {!isGuest && (
+                    {!isGuest && !route.params?.fromAdmin && (
                         <TouchableOpacity 
                             onPress={() => setReportModalVisible(true)}
                             className="mt-6 mb-4 flex-row justify-center items-center py-3 rounded-2xl"
