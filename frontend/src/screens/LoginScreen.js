@@ -33,6 +33,9 @@ export default function LoginScreen({ navigation }) {
 
         setGoogleLoading(true);
         try {
+            // Ștergem sesiunile corupte blocate în memorie înainte de logarea cu Google
+            await supabase.auth.signOut();
+
             const redirectTo = Linking.createURL('auth/callback');
             console.log('[AUTH][GOOGLE] redirectTo =', redirectTo);
 

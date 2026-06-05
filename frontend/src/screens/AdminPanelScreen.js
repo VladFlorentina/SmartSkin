@@ -7,14 +7,17 @@ import { useApp } from '../lib/AppContext';
 import { supabase } from '../lib/supabase';
 
 export default function AdminPanelScreen({ navigation }) {
-    const { colors, t } = useApp();
+    const { colors } = useApp();
     const [reports, setReports] = useState([]);
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        loadData();
-    }, []);
+        const unsubscribe = navigation.addListener('focus', () => {
+            loadData();
+        });
+        return unsubscribe;
+    }, [navigation]);
 
     async function loadData() {
         try {
@@ -26,7 +29,7 @@ export default function AdminPanelScreen({ navigation }) {
             setReports(reportsData);
             setStats(statsData);
         } catch (error) {
-            Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu am putut încărca rapoartele. Ești sigur că ai rol de admin?' });
+            Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu am putut încărca datele. Ești sigur că ai rol de admin?' });
             console.error(error);
         } finally {
             setLoading(false);
@@ -44,6 +47,8 @@ export default function AdminPanelScreen({ navigation }) {
                         await deleteAdminReport(reportId);
                         setReports(prev => prev.filter(r => r.id !== reportId));
                         Toast.show({ type: 'success', text1: 'Succes', text2: 'Raport șters.' });
+                        // Actualizăm și stat-ul
+                        setStats(prev => prev ? {...prev, activeReports: Math.max(0, prev.activeReports - 1)} : prev);
                     } catch (error) {
                         Toast.show({ type: 'error', text1: 'Eroare', text2: 'Nu am putut șterge raportul.' });
                     }
@@ -67,10 +72,21 @@ export default function AdminPanelScreen({ navigation }) {
                 </View>
 
                 {item.products && (
-                    <View className="mb-3 p-3 rounded-xl" style={{ backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border }}>
-                        <Text className="text-sm font-bold" style={{ color: colors.text }}>{item.products.name}</Text>
-                        <Text className="text-xs" style={{ color: colors.textSub }}>{item.products.brand} • {item.products.barcode}</Text>
-                    </View>
+                    <TouchableOpacity 
+                        className="mb-3 p-3 rounded-xl flex-row justify-between items-center" 
+                        style={{ backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border }}
+                        onPress={() => {
+                            if (item.products.barcode) {
+                                navigation.navigate('Product', { barcode: item.products.barcode, fromAdmin: true });
+                            }
+                        }}
+                    >
+                        <View className="flex-1">
+                            <Text className="text-sm font-bold" style={{ color: colors.text }}>{item.products.name}</Text>
+                            <Text className="text-xs" style={{ color: colors.textSub }}>{item.products.brand} • {item.products.barcode}</Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={colors.textSub} />
+                    </TouchableOpacity>
                 )}
 
                 {item.user_comment ? (
@@ -135,42 +151,58 @@ export default function AdminPanelScreen({ navigation }) {
                     renderItem={renderReport}
                     contentContainerStyle={{ padding: 24, paddingBottom: 100 }}
                     ListHeaderComponent={
-                        <>
+                        <View>
                             {/* STATS DASHBOARD */}
                             {stats && (
                                 <View className="mb-8">
-                                    <Text className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: colors.primary }}>Sumar Platformă</Text>
+                                    <Text className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: colors.primary }}>Gestiune Platformă</Text>
                                     
                                     <View className="flex-row flex-wrap justify-between" style={{ gap: 12 }}>
-                                        <View className="w-[48%] p-4 rounded-2xl shadow-sm items-center" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                                        <TouchableOpacity 
+                                            onPress={() => navigation.navigate('AdminUsers')}
+                                            className="w-[48%] p-4 rounded-2xl shadow-sm items-center" 
+                                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                                        >
                                             <Ionicons name="people-outline" size={28} color={colors.primary} />
                                             <Text className="text-3xl font-black mt-2" style={{ color: colors.text }}>{stats.totalUsers}</Text>
-                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Utilizatori Totali</Text>
-                                        </View>
+                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Utilizatori</Text>
+                                        </TouchableOpacity>
                                         
-                                        <View className="w-[48%] p-4 rounded-2xl shadow-sm items-center" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                                        <TouchableOpacity 
+                                            onPress={() => navigation.navigate('AdminReports')}
+                                            className="w-[48%] p-4 rounded-2xl shadow-sm items-center" 
+                                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.primary }}
+                                        >
                                             <Ionicons name="warning-outline" size={28} color={colors.primary} />
                                             <Text className="text-3xl font-black mt-2" style={{ color: colors.text }}>{stats.activeReports}</Text>
-                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Tichete Active</Text>
-                                        </View>
+                                            <Text className="text-xs text-center mt-1 font-bold" style={{ color: colors.primary }}>Tichete Active</Text>
+                                        </TouchableOpacity>
 
-                                        <View className="w-[48%] p-4 rounded-2xl shadow-sm items-center" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                                        <TouchableOpacity 
+                                            onPress={() => navigation.navigate('AdminProducts', { type: 'api' })}
+                                            className="w-[48%] p-4 rounded-2xl shadow-sm items-center" 
+                                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                                        >
                                             <Ionicons name="scan-outline" size={28} color={colors.primary} />
                                             <Text className="text-3xl font-black mt-2" style={{ color: colors.text }}>{stats.apiProducts}</Text>
-                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Scanări API Externe</Text>
-                                        </View>
+                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Produse API</Text>
+                                        </TouchableOpacity>
 
-                                        <View className="w-[48%] p-4 rounded-2xl shadow-sm items-center" style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}>
+                                        <TouchableOpacity 
+                                            onPress={() => navigation.navigate('AdminProducts', { type: 'manual' })}
+                                            className="w-[48%] p-4 rounded-2xl shadow-sm items-center" 
+                                            style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+                                        >
                                             <Ionicons name="camera-outline" size={28} color={colors.primary} />
                                             <Text className="text-3xl font-black mt-2" style={{ color: colors.text }}>{stats.manualProducts}</Text>
-                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Introduse Manual</Text>
-                                        </View>
+                                            <Text className="text-xs text-center mt-1" style={{ color: colors.textSub }}>Produse Manuale</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                             )}
 
                             <Text className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: colors.primary }}>Tichete Necesită Acțiune</Text>
-                        </>
+                        </View>
                     }
                     ListEmptyComponent={
                         <View className="items-center justify-center pt-10">

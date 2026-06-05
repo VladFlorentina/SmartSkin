@@ -25,7 +25,9 @@ import CompareScreen from './src/screens/CompareScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import AdminPanelScreen from './src/screens/AdminPanelScreen';
-
+import AdminReportsScreen from './src/screens/AdminReportsScreen';
+import AdminUsersScreen from './src/screens/AdminUsersScreen';
+import AdminProductsScreen from './src/screens/AdminProductsScreen';
 NativeWindStyleSheet.setOutput({
   default: "native",
 });
@@ -67,6 +69,11 @@ function AdminNavigator() {
   return (
     <AdminStack.Navigator screenOptions={{ headerShown: false }}>
       <AdminStack.Screen name="AdminPanel" component={AdminPanelScreen} />
+      <AdminStack.Screen name="AdminReports" component={AdminReportsScreen} />
+      <AdminStack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <AdminStack.Screen name="AdminProducts" component={AdminProductsScreen} />
+      <AdminStack.Screen name="Product" component={ProductScreen} />
+      <AdminStack.Screen name="Chat" component={ChatScreen} />
     </AdminStack.Navigator>
   );
 }

@@ -301,3 +301,84 @@ export async function deleteAdminReport(reportId) {
         throw error;
     }
 }
+
+export async function fetchAdminUsers() {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/users`, {
+            method: 'GET',
+            headers
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch admin users');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error fetching admin users:', error);
+        throw error;
+    }
+}
+
+export async function fetchAdminProducts(type = 'api') {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/products?type=${type}`, {
+            method: 'GET',
+            headers
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to fetch admin products');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error fetching admin products:', error);
+        throw error;
+    }
+}
+
+export async function updateAdminProductIngredients(id, ingredientsList) {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/products/${id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ ingredients_list: ingredientsList })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to update product');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error updating product:', error);
+        throw error;
+    }
+}
+
+export async function deleteAdminProduct(id) {
+    try {
+        const headers = await getAuthHeaders();
+        const response = await fetch(`${API_BASE_URL}/admin/products/${id}`, {
+            method: 'DELETE',
+            headers
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to delete product');
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('API Error deleting product:', error);
+        throw error;
+    }
+}
