@@ -73,7 +73,7 @@ const T = {
         // Product
         productLoading: 'Căutăm produsul în baza de date...',
         productNewTitle: 'Produs Nou Detectat!',
-        productNewDesc: 'Acest produs nu a fost analizat încă. Fotografiază eticheta cu ingredientele și AI-ul nostru îl va analiza instant!',
+        productNewDesc: 'Acest produs nu a fost analizat inca.',
         productNewHint: 'Rezultatul va fi salvat automat și va fi disponibil instant pentru toți utilizatorii SmartSkin care vor scana același produs.',
         productNoPhoto: 'Fără poză',
         productUnknownName: 'Produs Necunoscut',
@@ -294,7 +294,7 @@ const T = {
         // Product
         productLoading: 'Searching for product in the database... \uD83C\uDF38',
         productNewTitle: 'New Product Detected!',
-        productNewDesc: 'This product has not been analyzed yet. Take a photo of the ingredients label and our AI will analyze it instantly!',
+        productNewDesc: 'This product has not been analyzed yet.',
         productNewHint: 'The result will be saved automatically and instantly available to all SmartSkin users who scan the same product.',
         productNoPhoto: 'No photo',
         productUnknownName: 'Unknown Product',

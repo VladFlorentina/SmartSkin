@@ -181,11 +181,20 @@ export default function ProductScreen({ navigation, route }) {
                     <View className="w-full gap-y-4">
                         <Button
                             title={t('productScanLabelBtn')}
-                            onPress={() => navigation.replace('ManualAdd', {
-                                barcode: ocrMetadata?.barcode || barcode,
-                                prefillName: ocrMetadata?.name || '',
-                                prefillBrand: ocrMetadata?.brand || '',
-                            })}
+                            onPress={() => {
+                                if (isGuest) {
+                                    Alert.alert(
+                                        'Cont necesar',
+                                        'Pentru a adauga produse manual trebuie sa te autentifici.'
+                                    );
+                                    return;
+                                }
+                                navigation.replace('ManualAdd', {
+                                    barcode: ocrMetadata?.barcode || barcode,
+                                    prefillName: ocrMetadata?.name || '',
+                                    prefillBrand: ocrMetadata?.brand || '',
+                                });
+                            }}
                         />
                         <Button
                             title={t('productBackToScanner')}

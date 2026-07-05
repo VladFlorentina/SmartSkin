@@ -343,7 +343,7 @@ export async function saveToHistory(req, res) {
         
         const { data: existing, error: fetchError } = await supabase
             .from('scanned_products')
-            .select('id, scan_count')
+            .select('id, scan_count, safety_score')
             .eq('user_id', userId)
             .eq('product_id', productDbId)
             .maybeSingle();
@@ -360,7 +360,7 @@ export async function saveToHistory(req, res) {
             ({ data, error } = await supabase
                 .from('scanned_products')
                 .update({
-                    safety_score: safetyScore || existing.safety_score || 0,
+                    safety_score: safetyScore ?? existing.safety_score ?? 0,
                     scanned_at: new Date().toISOString(),
                     scan_count: (existing.scan_count || 1) + 1
                 })
@@ -374,7 +374,7 @@ export async function saveToHistory(req, res) {
                 .insert({
                     user_id: userId,
                     product_id: productDbId,
-                    safety_score: safetyScore || 0,
+                    safety_score: safetyScore ?? 0,
                     scanned_at: new Date().toISOString(),
                     is_favorite: false,
                     scan_count: 1
@@ -420,7 +420,8 @@ export async function getUserHistory(req, res) {
         )
       `)
             .eq('user_id', userId)
-            .order('scanned_at', { ascending: false });
+            .order('scanned_at', { ascending: false })
+            .limit(50);
 
         if (error) {
             console.error('Error fetching history:', error);
