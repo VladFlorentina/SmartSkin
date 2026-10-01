@@ -15,7 +15,7 @@
 
 **[📲 Descarcă CosmetiSafe pentru Android (APK)](https://expo.dev/accounts/vlad_florentina/projects/smartskin/builds/7b0e96ad-6d26-4021-9ca8-240ceb56b90e)**
 
-> Aplicația necesită Android 6.0+ (API 23). Se deschide linkul de mai sus de pe telefonul Android, se descarcă fișierul APK și se instalează direct — nu este necesară publicarea pe Google Play.
+> Necesita Android 6.0+. Deschide linkul de pe telefon, descarca APK-ul si instaleaza-l.
 
 ---
 
