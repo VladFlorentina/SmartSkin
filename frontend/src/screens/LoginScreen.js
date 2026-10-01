@@ -44,6 +44,9 @@ export default function LoginScreen({ navigation }) {
                 options: {
                     redirectTo,
                     skipBrowserRedirect: true,
+                    queryParams: {
+                        prompt: 'select_account',
+                    },
                 },
             });
 
